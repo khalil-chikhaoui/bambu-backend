@@ -1,0 +1,212 @@
+paths:
+  /users/signup:
+    post:
+      summary: Register a new user
+      description: Creates a new user account. Does not link to a business initially.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: newuser@example.com
+                password:
+                  type: string
+                  format: password
+                  example: securePass123!
+      responses:
+        201:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      _id: 
+                        type: string
+                      name: 
+                        type: string
+                      email: 
+                        type: string
+                      memberships:
+                        type: array
+                        items: {}
+                  token:
+                    type: string
+        400:
+          description: Invalid data or user already exists
+
+  /users/signin:
+    post:
+      summary: Sign in
+      description: Authenticate user and get JWT token.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: chikhaouikhl@gmail.com
+                password:
+                  type: string
+                  format: password
+                  example: 123456
+      responses:
+        200:
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    description: User object with populated memberships
+                  token:
+                    type: string
+        401:
+          description: Invalid email or password
+
+  /users/forgot-password:
+    post:
+      summary: Request password reset
+      description: Sends an email with a reset link if the account exists.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        200:
+          description: Email sent (or simulated success for security)
+        500:
+          description: Email service failure
+
+  /users/reset-password:
+    post:
+      summary: Reset password
+      description: Sets a new password using a valid reset token.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                  description: The JWT token received in the email link
+                password:
+                  type: string
+                  format: password
+                  description: The new password
+      responses:
+        200:
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                    description: New session token
+                  user:
+                    type: object
+        401:
+          description: Invalid or expired token
+
+  /users/profile:
+    get:
+      summary: Get current user profile
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Profile data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id: 
+                    type: string
+                  name: 
+                    type: string
+                  email: 
+                    type: string
+                  profileImage:
+                    type: string
+                  memberships:
+                    type: array
+        404:
+          description: User not found
+    put:
+      summary: Update profile
+      description: Update name, profile image URL, or password.
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                profileImage:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                  message:
+                    type: string
