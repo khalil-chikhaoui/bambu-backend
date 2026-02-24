@@ -3,8 +3,8 @@ import nodemailer from "nodemailer";
 export const getTransporter = () => {
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 587,         
-    secure: false, 
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
@@ -27,7 +27,7 @@ const emailWrapper = (content, footerNote) => `
   </div>
 `;
 
-// Reusable Signature using exact Brand colors
+// Reusable Signature using exact Brand colors and the new Logo
 const getDefaultSignature = (language) => {
   const isFr = language === "fr";
   const tagline = isFr ? "Conseil Stratégique" : "Strategic Consulting";
@@ -37,7 +37,8 @@ const getDefaultSignature = (language) => {
       <table style="border-collapse: collapse; margin: 0;">
         <tr>
           <td style="padding-right: 15px; border-right: 2px solid #027800; vertical-align: middle;">
-            <strong style="color: #027800; font-size: 18px; letter-spacing: 1px; margin: 0;">BAMBU</strong><br/>
+            <img src="https://res.cloudinary.com/dkh0hsbjg/image/upload/v1771928947/logo-white-bg-1024x1024_t4fq3p.png" alt="Bambu Logo" style="width: 60px; height: auto; display: block; border: none; margin-bottom: 6px;" />
+            <strong style="color: #027800; font-size: 18px; letter-spacing: 1px; margin: 0; display: block;">BAMBU</strong>
             <span style="color: #5f7564; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${tagline}</span>
           </td>
           <td style="padding-left: 15px; font-size: 13px; color: #35443a; line-height: 1.5; vertical-align: middle;">
@@ -57,7 +58,7 @@ const contactSubjectLables = {
   partnership: "Partnership (Partenariat)",
   info: "Information (Informations)",
   service: "Service (Prestation)",
-  other: "Other (Autre)"
+  other: "Other (Autre)",
 };
 
 export const getContactTemplates = (data) => {
@@ -79,7 +80,8 @@ export const getContactTemplates = (data) => {
       subject: isFr
         ? "Bambu - Accusé de réception de votre message"
         : "Bambu - We have received your message",
-      html: emailWrapper(`
+      html: emailWrapper(
+        `
         <p style="margin-top: 0;">${isFr ? `Bonjour ${firstName},` : `Dear ${firstName},`}</p>
         
         <p>${
@@ -95,7 +97,9 @@ export const getContactTemplates = (data) => {
         }</p>
         
         ${getDefaultSignature(language)}
-      `, doNotReplyNote),
+      `,
+        doNotReplyNote,
+      ),
     },
 
     // ---------------------------------------------------------
@@ -103,7 +107,8 @@ export const getContactTemplates = (data) => {
     // ---------------------------------------------------------
     admin: {
       subject: `New Contact message: ${displaySubject} from ${firstName} ${lastName}`,
-      html: emailWrapper(`
+      html: emailWrapper(
+        `
         <h3 style="margin-top: 0; color: #050a05; font-size: 18px;">New Contact Submission</h3>
         
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
@@ -127,7 +132,9 @@ export const getContactTemplates = (data) => {
         
         <h4 style="margin: 0 0 10px 0; color: #026300; font-size: 14px;">Message:</h4>
         <div style="background-color: #f6f8f6; border: 1px solid #e1e7e3; border-radius: 6px; padding: 15px; color: #212c25; white-space: pre-wrap; font-family: inherit;">${message}</div>
-      `, adminFooterNote),
+      `,
+        adminFooterNote,
+      ),
     },
   };
 };

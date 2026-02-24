@@ -55,7 +55,6 @@ export const createContactMessage = asyncHandler(async (req, res) => {
         to: process.env.SMTP_EMAIL, 
         subject: templates.admin.subject,
         html: templates.admin.html,
-        replyTo: email, 
       });
       console.log("✅ Background: Admin notification sent.");
 
