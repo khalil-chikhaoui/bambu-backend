@@ -81,7 +81,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     const transporter = getTransporter(); 
     
     await transporter.sendMail({
-      from: "InvoTrack <no.reply@invotrack.de>", 
+      from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
       to: email, 
       subject: "Reset your Password",
       html: `
@@ -141,12 +141,12 @@ export const registerUser = asyncHandler(async (req, res) => {
       const transporter = getTransporter();
       
       await transporter.sendMail({
-        from: "InvoTrack <no.reply@invotrack.de>",
+         from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
         to: email,
         subject: "Verify your email address",
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2>Welcome to InvoTrack, ${name}!</h2>
+            <h2>Welcome to Bambu, ${name}!</h2>
             <p>Thank you for signing up. Please use the verification code below to activate your account:</p>
             
             <div style="background-color: #f4f4f4; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
@@ -254,7 +254,7 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: "InvoTrack <no.reply@invotrack.de>",
+       from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
       to: email,
       subject: "New Verification Code",
       html: `

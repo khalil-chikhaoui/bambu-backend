@@ -2,16 +2,12 @@ import nodemailer from "nodemailer";
 
 export const getTransporter = () => {
   return nodemailer.createTransport({
-    host: "smtp.zoho.eu",
+    host: "smtp.gmail.com",
     port: 587,         
-    secure: false,    
+    secure: false, // true for 465, false for other ports (587)
     auth: {
-      user: process.env.ZOHO_EMAIL,
-      pass: process.env.ZOHO_PASSWORD,
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASSWORD,
     },
-    // Optional but recommended for port 587
-    tls: {
-      ciphers: 'SSLv3'
-    }
   });
 };

@@ -15,9 +15,9 @@ const options = {
   definition: {
     openapi: '3.0.0', // Standard OpenAPI version
     info: {
-      title: 'Invotrack API',
+      title: 'Bambu API',
       version: '1.0.0',
-      description: 'Professional Invoice & Sales Tracking API documentation',
+      description: 'Professional Banbu  APIs documentation',
     },
     servers: [
       {
