@@ -3,11 +3,21 @@ import ContactMessage from "../models/ContactMessage.js";
 import { getTransporter, getContactTemplates } from "../config/mail.js";
 
 export const createContactMessage = asyncHandler(async (req, res) => {
-  const { subject, firstName, lastName, email, message, language, hp_address } = req.body;
+  const { 
+    subject, 
+    firstName, 
+    lastName, 
+    email, 
+    message, 
+    language, 
+    hp_address,
+    phone,
+    wantsPhoneMeeting 
+  } = req.body;
 
   // 1. Honeypot check
   if (hp_address) {
-    console.log("🤖 Bot detected via Honeypot. Ignoring request.");
+    console.log("🤖 Bot detected via Honeypot.");
     return res.status(201).json({ status: "success", message: "MESSAGE_SENT_SUCCESSFULLY" });
   }
 
@@ -16,47 +26,45 @@ export const createContactMessage = asyncHandler(async (req, res) => {
     throw new Error("MISSING_FIELDS");
   }
 
-  // 2. Save to Database (We wait for this so data is secure)
+  // 2. Save to Database
   const contactEntry = await ContactMessage.create({
     subject,
     firstName,
     lastName,
     email,
     message,
+    phone: phone || "",
+    wantsPhoneMeeting: !!wantsPhoneMeeting,
     language: language || "en",
   });
 
-  // 3. Respond to frontend IMMEDIATELY (Fast UX!)
+  // 3. Respond to frontend
   res.status(201).json({
     status: "success",
     message: "MESSAGE_SENT_SUCCESSFULLY",
   });
 
-  // 4. Background Task: Send Emails SEQUENTIALLY
-  // We wrap this in a self-executing async function and DO NOT await it.
-  // It runs in the background while the user is already looking at the success screen.
+  // 4. Background Task: Send Emails
   (async () => {
     try {
       const transporter = getTransporter(); 
       const templates = getContactTemplates(contactEntry);
 
-      console.log(`⏳ Background: Sending receipt to user: ${email}...`);
+      // User receipt
       await transporter.sendMail({
         from: `"Bambu System" <noreply@bambu-services.com>`, 
         to: email,
         subject: templates.user.subject,
         html: templates.user.html,
       });
-      console.log("✅ Background: User receipt sent.");
 
-      console.log("⏳ Background: Sending notification to admin...");
+      // Admin notification
       await transporter.sendMail({
         from: `"Bambu System" <noreply@bambu-services.com>`, 
         to: process.env.SMTP_EMAIL, 
         subject: templates.admin.subject,
         html: templates.admin.html,
       });
-      console.log("✅ Background: Admin notification sent.");
 
     } catch (error) {
       console.error("❌ Background Email Task Failed:", error.message);
