@@ -31,7 +31,7 @@ router.route("/:id")
 
 // --- Logo Management ---
 // Expects form-data with a file field named 'logo'
-router.post("/:id/upload-logo", logoUploadMiddleware.single("logo"), uploadOrganizationLogo);
+router.post("/:id/upload-logo", logoUploadMiddleware.single("file"), uploadOrganizationLogo);
 router.delete("/:id/logo", deleteOrganizationLogo);
 
 // --- Team & Member Management ---
