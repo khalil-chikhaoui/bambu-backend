@@ -41,7 +41,7 @@ router.route("/profile")
   .get(getProfile)
   .put(updateProfile);
 
-router.post("/avatar", avatarUploadMiddleware.single("avatar"), uploadUserAvatar);
+router.post("/avatar", avatarUploadMiddleware.single("file"), uploadUserAvatar);
 router.delete("/avatar", deleteUserAvatar);
 
 export default router;
