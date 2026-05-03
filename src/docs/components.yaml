@@ -1,0 +1,11 @@
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Message d'erreur spécifique au contexte"
+        stack:
+          type: string
+          example: "Error stack trace (seulement en développement)"

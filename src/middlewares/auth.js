@@ -10,12 +10,16 @@ import User from "../models/User.js";
 
 /**
  * Generates a JSON Web Token (JWT) for a given user ID.
- * * @param {string} id - The MongoDB User ID.
- * @returns {string} Signed JWT token valid for 30 days.
+ * @param {string} id - The MongoDB User ID.
+ * @param {boolean} rememberMe - Determines token lifespan.
+ * @returns {string} Signed JWT token.
  */
-export const generateToken = (id) => {
+export const generateToken = (id, rememberMe = false) => {
+  // 30 days if they want to stay connected, 2 hours if it's a temporary session
+  const lifespan = rememberMe ? "30d" : "2h";
+  
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+    expiresIn: lifespan,
   });
 };
 

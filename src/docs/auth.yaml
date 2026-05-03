@@ -1,0 +1,90 @@
+tags:
+  - name: Authentication & Profile
+    description: Gestion des utilisateurs, connexion, et profils.
+
+paths:
+  /users/signin:
+    post:
+      tags:
+        - Authentication & Profile
+      summary: Se connecter à l'ERP
+      description: Authentifie un utilisateur et retourne un token JWT.
+      security: [] # No auth required for login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+            example:
+              email: "admin@bambu-services.com"
+              password: "password123"
+      responses:
+        '200':
+          description: Connexion réussie
+        '401':
+          description: Identifiants invalides
+
+  /users/profile:
+    get:
+      tags:
+        - Authentication & Profile
+      summary: Obtenir mon profil
+      description: Retourne les informations de l'utilisateur connecté basé sur son token JWT.
+      responses:
+        '200':
+          description: Profil récupéré avec succès
+        '401':
+          description: Non autorisé, token manquant ou invalide
+    put:
+      tags:
+        - Authentication & Profile
+      summary: Mettre à jour mon profil
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                password:
+                  type: string
+            example:
+              name: "Admin System Updated"
+      responses:
+        '200':
+          description: Profil mis à jour
+
+  /users/avatar:
+    post:
+      tags:
+        - Authentication & Profile
+      summary: Uploader un avatar
+      description: Upload une image de profil pour l'utilisateur connecté.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Avatar uploadé
+    delete:
+      tags:
+        - Authentication & Profile
+      summary: Supprimer mon avatar
+      responses:
+        '200':
+          description: Avatar supprimé

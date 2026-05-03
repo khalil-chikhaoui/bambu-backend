@@ -1,0 +1,114 @@
+tags:
+  - name: Organizations
+    description: Gestion des profils d'entreprise, logos et limites des membres.
+
+paths:
+  /organizations/{id}:
+    get:
+      tags:
+        - Organizations
+      summary: Récupérer une organisation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: "Remplacez par l'ID de votre organisation issue de MongoDB"
+      responses:
+        '200':
+          description: Organisation trouvée
+    put:
+      tags:
+        - Organizations
+      summary: Mettre à jour l'organisation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              name: "Bambu HQ"
+              maxMembers: 25
+              address:
+                city: "Lyon"
+                country: "France"
+      responses:
+        '200':
+          description: Organisation mise à jour
+          
+  /organizations/{id}/upload-logo:
+    post:
+      tags:
+        - Organizations
+      summary: Uploader le logo de l'organisation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo uploadé avec succès
+
+  /organizations/{id}/members:
+    get:
+      tags:
+        - Organizations
+      summary: Lister les membres et invitations
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste récupérée
+          
+  /organizations/{id}/invite:
+    post:
+      tags:
+        - Organizations
+      summary: Inviter un nouveau membre
+      description: Envoie un email d'invitation. Vérifie que la limite 'maxMembers' n'est pas atteinte.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              email: "nouvel.employe@bambu-services.com"
+              name: "Jean Dupont"
+              role: "employee"
+              title: "Développeur"
+      responses:
+        '200':
+          description: Invitation envoyée
+        '403':
+          description: Limite de membres atteinte

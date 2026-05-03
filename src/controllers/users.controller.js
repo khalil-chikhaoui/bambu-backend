@@ -1,9 +1,3 @@
-/**
- * @fileoverview User Controller
- * Handles user authentication, profile management, password recovery, 
- * and avatar assets.
- */
-
 import asyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
@@ -12,12 +6,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getTransporter } from "../config/mail.js";
-import crypto from "crypto"; // Native Node module for random codes
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-
 
 /**
  * @desc    Authenticate user & get token
@@ -25,24 +16,16 @@ const __dirname = path.dirname(__filename);
  * @access  Public
  */
 export const signIn = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  // Extract rememberMe from the frontend request
+  const { email, password, rememberMe } = req.body; 
 
-  const user = await User.findOne({ email }).populate("memberships.businessId");
+  const user = await User.findOne({ email }).populate("memberships.organizationId");
 
   if (user && (await user.matchPassword(password))) {
-    
-    // --- CHECK VERIFICATION STATUS ---
-    if (!user.isVerified) {
-      res.status(403);
-      // PRO FIX: Throw a CODE, not a sentence
-      throw new Error("AUTH_NOT_VERIFIED"); 
-    }
-    // ---------------------------------
-
-    const token = generateToken(user._id);
+    // Pass rememberMe to your generator
+    const token = generateToken(user._id, rememberMe); 
     const userResponse = user.toObject();
     delete userResponse.password;
-    delete userResponse.verificationCode;
 
     res.json({
       user: userResponse,
@@ -50,7 +33,6 @@ export const signIn = asyncHandler(async (req, res) => {
     });
   } else {
     res.status(401);
-    // PRO FIX: Throw a CODE
     throw new Error("AUTH_INVALID_CREDENTIALS");
   }
 });
@@ -65,12 +47,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    // Security Best Practice: Don't confirm or deny account existence
-    // We return success so the frontend shows the "Check Email" modal regardless
     return res.status(200).json({ message: "RESET_LINK_SENT" });
   }
 
-  // Generate a short-lived (15 min) reset token
   const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "15m",
   });
@@ -81,17 +60,17 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     const transporter = getTransporter(); 
     
     await transporter.sendMail({
-      from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
+      from: `"Bambu ERP" <${process.env.SMTP_EMAIL}>`,
       to: email, 
-      subject: "Reset your Password",
+      subject: "Réinitialisation de votre mot de passe",
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-          <h2>Password Reset Request</h2>
-          <p>We received a request to reset your password. Click the button below to proceed. This link is valid for 15 minutes.</p>
+          <h2>Demande de réinitialisation</h2>
+          <p>Nous avons reçu une demande de réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous. Ce lien est valide pendant 15 minutes.</p>
           <div style="margin: 20px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background: #231f70; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">Reset Password</a>
+            <a href="${resetUrl}" style="display: inline-block; background: #184c16; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">Réinitialiser mon mot de passe</a>
           </div>
-          <p>If you did not request this, please ignore this email.</p>
+          <p>Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet e-mail.</p>
         </div>
       `,
     }); 
@@ -99,183 +78,37 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "RESET_LINK_SENT" });
   } catch (err) {
     res.status(500);
-    // PRO FIX: Throw a CODE
     throw new Error("EMAIL_SEND_FAILED");
   }
 });
 
-/**
- * @desc    Register a new user (Direct Signup)
- * @route   POST /api/users/signup
- * @access  Public
- */
-export const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, language } = req.body;
-
-  if (!name || !email || !password) {
-    res.status(400);
-    throw new Error("AUTH_MISSING_FIELDS"); 
-  }
-
-  const userExists = await User.findOne({ email });
-  if (userExists) {
-    res.status(400);
-    throw new Error("AUTH_USER_EXISTS"); 
-  }
-
-  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  
-  const user = await User.create({
-    name,
-    email,
-    password,
-    language: language || "en", 
-    memberships: [],
-    isVerified: false,
-    verificationCode: verificationCode,
-    verificationCodeExpires: Date.now() + 15 * 60 * 1000, 
-  });
-
-  if (user) {
-    try {
-      const transporter = getTransporter();
-      
-      await transporter.sendMail({
-         from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
-        to: email,
-        subject: "Verify your email address",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2>Welcome to Bambu, ${name}!</h2>
-            <p>Thank you for signing up. Please use the verification code below to activate your account:</p>
-            
-            <div style="background-color: #f4f4f4; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-              <h1 style="color: #231f70; letter-spacing: 5px; margin: 0;">${verificationCode}</h1>
-            </div>
-
-            <p>This code expires in 15 minutes.</p>
-            <p>If you did not request this, please ignore this email.</p>
-          </div>
-        `,
-      });
-
-    } catch (error) {
-      //  We log the error but don't stop the response because the user is created.
-      // They can request a resend later if the email fails.
-      console.error("Email send failed:", error);
-    }
-
-    res.status(201).json({
-      message: "Registration successful",
-      email: user.email 
-    });
-  } else {
-    res.status(400);
-    throw new Error("AUTH_INVALID_DATA"); 
-  }
-});
-
 
 /**
- * @desc    Verify email with code
- * @route   POST /api/users/verify-email
+ * @desc    Vérifier la validité du token de réinitialisation
+ * @route   GET /api/users/reset-password/:token
  * @access  Public
  */
-export const verifyEmail = asyncHandler(async (req, res) => {
-  const { email, code } = req.body;
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    res.status(404);
-    // PRO FIX: Error Code
-    throw new Error("AUTH_USER_NOT_FOUND");
-  }
-
-  if (user.isVerified) {
-    // This is technically a success state (idempotent), but we return a message
-    return res.status(200).json({ message: "EMAIL_ALREADY_VERIFIED" });
-  }
-
-  // Check code validity
-  if (user.verificationCode !== code || user.verificationCodeExpires < Date.now()) {
-    res.status(400);
-    // PRO FIX: Error Code
-    throw new Error("AUTH_INVALID_CODE");
-  }
-
-  // Verify User
-  user.isVerified = true;
-  user.verificationCode = undefined;
-  user.verificationCodeExpires = undefined;
-  await user.save();
-
-  // Auto-login user after verification
-  const token = generateToken(user._id);
-  const userResponse = user.toObject();
-  delete userResponse.password;
-
-  res.status(200).json({
-    message: "Email verified successfully",
-    user: userResponse,
-    token: token
-  });
-});
-
-
-/**
- * @desc    Resend verification code
- * @route   POST /api/users/resend-verification
- * @access  Public
- */
-export const resendVerificationCode = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    res.status(404);
-    // PRO FIX: Error Code
-    throw new Error("AUTH_USER_NOT_FOUND");
-  }
-
-  if (user.isVerified) {
-    // PRO FIX: Error Code (Status 400 because this action is invalid for verified users)
-    res.status(400);
-    throw new Error("EMAIL_ALREADY_VERIFIED"); 
-  }
-
-  // Generate new code
-  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  user.verificationCode = verificationCode;
-  user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 mins
-  await user.save();
+export const validateResetToken = asyncHandler(async (req, res) => {
+  const { token } = req.params;
 
   try {
-    const transporter = getTransporter();
-    await transporter.sendMail({
-       from: `"Bambu" <${process.env.SMTP_EMAIL}>`,
-      to: email,
-      subject: "New Verification Code",
-      html: `
-        <div style="font-family: sans-serif; padding: 20px;">
-          <h2>New Verification Code</h2>
-          <p>You requested a new verification code:</p>
-          <h1 style="color: #231f70; letter-spacing: 5px;">${verificationCode}</h1>
-          <p>This code expires in 15 minutes.</p>
-        </div>
-      `,
-    });
+    // On essaie de décoder le token. S'il est expiré, ça déclenchera une erreur.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Success message can remain a string or be a code if you want to translate the success toast too
-    res.status(200).json({ message: "VERIFICATION_CODE_SENT" });
+    // On vérifie que l'utilisateur existe toujours
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      res.status(404);
+      throw new Error("AUTH_USER_NOT_FOUND");
+    }
+
+    // Si tout est bon, on renvoie un statut 200
+    res.status(200).json({ message: "TOKEN_VALID" });
   } catch (error) {
-    res.status(500);
-    // PRO FIX: Error Code
-    throw new Error("EMAIL_SEND_FAILED");
+    res.status(401);
+    throw new Error("AUTH_TOKEN_INVALID");
   }
 });
-
 
 /**
  * @desc    Reset password using a valid JWT token
@@ -287,18 +120,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).populate("memberships.businessId");
+    const user = await User.findById(decoded.id).populate("memberships.organizationId");
 
     if (!user) {
       res.status(404);
-      // PRO FIX: Error Code
       throw new Error("AUTH_USER_NOT_FOUND");
     }
 
     user.password = password;
     await user.save();
 
-    // Create a new session token so user is logged in after reset
     const sessionToken = generateToken(user._id);
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -310,11 +141,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     res.status(401);
-    // PRO FIX: Error Code (Catch-all for jwt errors)
     throw new Error("AUTH_TOKEN_INVALID");
   }
 });
-
 
 /**
  * @desc    Update user profile details
@@ -326,31 +155,32 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   if (!user) {
     res.status(404);
-    // PRO FIX: Error Code
     throw new Error("AUTH_USER_NOT_FOUND");
   }
 
-  // Update fields if provided
-  user.name = req.body.name || user.name;
-  user.profileImage = req.body.profileImage || user.profileImage;
+  // 1. Champs simples (Nom)
+  if (req.body.name) user.name = req.body.name;
   
-  if (req.body.language) {
-    user.language = req.body.language;
+  // Note: On ne touche plus au password ici !
+
+  // 2. Champs imbriqués (Téléphone et Adresse)
+  if (req.body.phoneNumber) {
+    user.phoneNumber = { ...user.phoneNumber, ...req.body.phoneNumber };
   }
 
-  if (req.body.password) {
-    user.password = req.body.password;
+  if (req.body.address) {
+    user.address = { ...user.address, ...req.body.address };
   }
 
   const updatedUser = await user.save();
-  await updatedUser.populate("memberships.businessId");
+  await updatedUser.populate("memberships.organizationId");
 
   const userResponse = updatedUser.toObject();
   delete userResponse.password;
 
   res.json({
     user: userResponse,
-    message: "PROFILE_UPDATED", // Success Code (Optional, usually handled by frontend state)
+    message: "PROFILE_UPDATED", 
   });
 });
 
@@ -360,7 +190,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).populate("memberships.businessId");
+  const user = await User.findById(req.user._id).populate("memberships.organizationId");
 
   if (user) {
     const userResponse = user.toObject();
@@ -370,6 +200,54 @@ export const getProfile = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("AUTH_USER_NOT_FOUND");
   }
+});
+
+/**
+ * @desc    Upload user profile avatar
+ * @route   POST /api/users/avatar
+ * @access  Private
+ */
+export const uploadUserAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error("UPLOAD_NO_FILE");
+  }
+
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    // If user is deleted during upload, clean up the orphaned file
+    if (req.file.path) fs.unlinkSync(req.file.path);
+    res.status(404);
+    throw new Error("AUTH_USER_NOT_FOUND");
+  }
+
+  // Delete old avatar if it exists locally
+  if (user.profileImage && user.profileImage.includes('/api/images/')) {
+    try {
+      const oldFileName = user.profileImage.split('/').pop();
+      const storagePath = process.env.UPLOAD_PATH || path.join(__dirname, "../../images");
+      const oldPath = path.join(storagePath, "users", oldFileName);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    } catch (err) {
+      console.error("Failed to delete old user avatar:", err.message);
+    }
+  }
+
+  // Save new avatar path to DB
+  user.profileImage = `${process.env.BACKEND_URL}/api/images/users/${req.file.filename}`;
+  await user.save();
+
+  // Populate organization ID just like the other user routes
+  await user.populate("memberships.organizationId");
+
+  const userResponse = user.toObject();
+  delete userResponse.password;
+
+  res.status(200).json({
+    message: "AVATAR_UPLOADED",
+    user: userResponse,
+  });
 });
 
 
@@ -386,7 +264,6 @@ export const deleteUserAvatar = asyncHandler(async (req, res) => {
     throw new Error("AUTH_USER_NOT_FOUND");
   }
 
-  // 1. Delete file logic (Keep existing)
   if (user.profileImage && user.profileImage.includes('/api/images/')) {
     try {
       const filename = user.profileImage.split('/').pop();
@@ -401,14 +278,18 @@ export const deleteUserAvatar = asyncHandler(async (req, res) => {
     }
   }
 
-  // 2. Clear DB field
   user.profileImage = "";
   await user.save();
 
-  const updatedUser = await User.findById(req.user._id).populate("memberships.businessId");
+  // 1. On utilise le populate direct (plus rapide, pas de deuxième requête DB)
+  await user.populate("memberships.organizationId");
+
+  // 2. On supprime le mot de passe avant d'envoyer (sécurité)
+  const userResponse = user.toObject();
+  delete userResponse.password;
 
   res.json({ 
     message: "AVATAR_DELETED",
-    user: updatedUser 
+    user: userResponse 
   });
 });

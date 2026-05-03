@@ -1,0 +1,62 @@
+tags:
+  - name: Invitations
+    description: Flux d'acceptation des invitations (Utilisateurs existants et nouveaux)
+
+paths:
+  /invitations/{token}:
+    get:
+      tags:
+        - Invitations
+      summary: Vérifier un token d'invitation
+      security: [] # Public route
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+          example: "votre-token-securise-ici"
+      responses:
+        '200':
+          description: Token valide, retourne les infos de l'invitation
+        '404':
+          description: Invitation invalide ou expirée
+
+  /invitations/accept-login:
+    post:
+      tags:
+        - Invitations
+      summary: Accepter (Utilisateur Existant)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              token: "votre-token-securise-ici"
+              password: "mot-de-passe-utilisateur"
+      responses:
+        '200':
+          description: Invitation acceptée, utilisateur connecté
+
+  /invitations/accept-register:
+    post:
+      tags:
+        - Invitations
+      summary: Accepter (Nouvel Utilisateur)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              token: "votre-token-securise-ici"
+              name: "Nouveau Membre"
+              password: "MySecurePassword123"
+      responses:
+        '201':
+          description: Compte créé et invitation acceptée
