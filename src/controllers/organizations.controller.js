@@ -7,7 +7,7 @@
 import asyncHandler from "express-async-handler";
 import Organization from "../models/Organization.js";
 import User from "../models/User.js";
-import Invitation from "../models/Invitation.js"; // Ensure you update this model to use organizationId
+import Invitation from "../models/Invitation.js"; 
 import crypto from "crypto";
 import mongoose from "mongoose";
 import fs from "fs";
@@ -71,6 +71,10 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     organization.maxMembers = maxMembers;
   }
 
+  // --- TRACKING DES CHANGEMENTS ---
+  let isAddressUpdated = !!address;
+  let isProfileUpdated = !!(name || legalName || description || email || website || registrationNumber || taxId || timezone || phoneNumber || socialLinks || maxMembers);
+
   // Top-Level Field Updates
   if (name !== undefined) organization.name = name;
   if (legalName !== undefined) organization.legalName = legalName;
@@ -86,6 +90,24 @@ export const updateOrganization = asyncHandler(async (req, res) => {
   if (socialLinks) organization.socialLinks = { ...organization.socialLinks, ...socialLinks };
 
   const updatedOrganization = await organization.save();
+
+  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
+  if (isAddressUpdated) {
+    await MemberHistory.create({
+      organizationId: organization._id,
+      action: "ORG_ADDRESS_UPDATED",
+      actor: req.user._id,
+    });
+  }
+
+  // S'il y a d'autres champs mis à jour que l'adresse, on trace aussi "ORG_UPDATED"
+  if (isProfileUpdated && Object.keys(req.body).some(key => key !== 'address')) {
+    await MemberHistory.create({
+      organizationId: organization._id,
+      action: "ORG_UPDATED",
+      actor: req.user._id,
+    });
+  }
   
   res.json({
     organization: updatedOrganization,
@@ -154,6 +176,13 @@ export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
   organization.logo = `${process.env.BACKEND_URL}/api/images/organizations/${req.file.filename}`;
   await organization.save();
 
+  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
+  await MemberHistory.create({
+    organizationId: organization._id,
+    action: "ORG_LOGO_UPLOADED",
+    actor: req.user._id,
+  });
+
   res.status(200).json({
     message: "LOGO_UPLOADED",
     logo: organization.logo,
@@ -186,6 +215,13 @@ export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
 
   organization.logo = "";
   await organization.save();
+
+  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
+  await MemberHistory.create({
+    organizationId: organization._id,
+    action: "ORG_LOGO_DELETED",
+    actor: req.user._id,
+  });
 
   res.json({ message: "LOGO_REMOVED", logo: "" });
 });
@@ -247,7 +283,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
     status: "Pending",
   });
 
-  // 2. Création de l'historique (assigné à une variable pour le rollback au cas où)
+  // 2. Création de l'historique 
   const newHistory = await MemberHistory.create({
     organizationId,
     action: "INVITE_SENT",
@@ -279,7 +315,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
   } catch (err) {
     console.error("Email Error:", err);
     
-    // --- ROLLBACK : On supprime l'invitation ET l'historique si l'email échoue ---
+    // --- ROLLBACK
     if (newInvitation) await Invitation.findByIdAndDelete(newInvitation._id);
     if (newHistory) await MemberHistory.findByIdAndDelete(newHistory._id); 
     
@@ -370,7 +406,6 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
     throw new Error("MEMBER_NOT_IN_ORG");
   }
 
-  // --- CAPTURER L'ANCIEN RÔLE ICI ---
   const oldRole = member.memberships[membershipIndex].role;
 
   // Mettre à jour le rôle
@@ -384,7 +419,7 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
     actor: req.user._id,
     targetUser: memberId,
     targetEmail: member.email,
-    details: { role: role, oldRole: oldRole }, // oldRole est maintenant défini
+    details: { role: role, oldRole: oldRole }, 
   });
 
   res.status(200).json({ message: "ROLE_UPDATED", role });
@@ -480,8 +515,8 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
   await MemberHistory.create({
     organizationId,
     action: "MEMBER_LEFT",
-    actor: req.user._id,        // C'est lui-même l'acteur
-    targetUser: req.user._id,   // C'est lui-même la cible
+    actor: req.user._id,        
+    targetUser: req.user._id,   
     targetEmail: user.email,
   });
 
@@ -497,30 +532,25 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
 export const getOrganizationHistory = asyncHandler(async (req, res) => {
   const organizationId = req.params.id;
   
-  // Paramètres de pagination récupérés depuis l'URL (ex: ?page=1&limit=10)
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = (page - 1) * limit;
 
-  // 1. Vérifier que l'organisation existe
   const organization = await Organization.findById(organizationId);
   if (!organization) {
     res.status(404);
     throw new Error("ORG_NOT_FOUND");
   }
 
-  // 2. Compter le nombre total de documents pour cette organisation
   const totalItems = await MemberHistory.countDocuments({ organizationId });
 
-  // 3. Récupérer l'historique avec pagination et jointures (populate)
   const history = await MemberHistory.find({ organizationId })
-    .populate("actor", "name email profileImage") // Récupère les infos de celui qui a fait l'action
-    .populate("targetUser", "name email profileImage") // Récupère les infos de celui qui a subi l'action
-    .sort({ createdAt: -1 }) // Trie par date décroissante (le plus récent en premier)
+    .populate("actor", "name email profileImage") 
+    .populate("targetUser", "name email profileImage") 
+    .sort({ createdAt: -1 }) 
     .skip(skip)
     .limit(limit);
 
-  // 4. Renvoyer la réponse structurée
   res.status(200).json({
     data: history,
     pagination: {

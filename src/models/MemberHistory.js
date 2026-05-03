@@ -1,4 +1,3 @@
-// models/MemberHistory.js
 import mongoose from "mongoose";
 
 const memberHistorySchema = new mongoose.Schema(
@@ -11,12 +10,19 @@ const memberHistorySchema = new mongoose.Schema(
     action: {
       type: String,
       enum: [
+        // --- Actions sur les membres ---
         "INVITE_SENT",       // X a invité Y
         "INVITE_ACCEPTED",   // Y a accepté l'invitation
         "INVITE_CANCELLED",  // X a annulé l'invitation de Y
         "ROLE_UPDATED",      // X a changé le rôle de Y
         "MEMBER_REMOVED",    // X a supprimé Y
         "MEMBER_LEFT",       // X a quitté l'organisation
+        
+        // --- Actions sur l'organisation ---
+        "ORG_UPDATED",           // X a modifié les paramètres généraux
+        "ORG_ADDRESS_UPDATED",   // X a modifié l'adresse
+        "ORG_LOGO_UPLOADED",     // X a ajouté/modifié le logo
+        "ORG_LOGO_DELETED",      // X a supprimé le logo
       ],
       required: true,
     },
@@ -30,14 +36,15 @@ const memberHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-    // L'email cible (très utile pour les invitations car le 'targetUser' n'a pas encore de compte)
+    // L'email cible (très utile pour les invitations)
     targetEmail: {
       type: String,
     },
-    // Données supplémentaires (ex: quel était l'ancien rôle, quel est le nouveau)
+    // Données supplémentaires 
     details: {
       role: String,
       oldRole: String,
+      changedFields: [String], // Nouveau : pour lister ce qui a changé (ex: ["name", "email"])
     },
   },
   {
