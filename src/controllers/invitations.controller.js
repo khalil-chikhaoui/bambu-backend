@@ -8,17 +8,11 @@ import Invitation from "../models/Invitation.js";
 import User from "../models/User.js";
 import Organization from "../models/Organization.js";
 import { generateToken } from "../middlewares/auth.js";
-import MemberHistory from "../models/MemberHistory.js";
+import { logAudit } from "../middlewares/audit.service.js"; // New polymorphic service
 
-/**
- * @desc    Validate invitation token & check user existence
- * @route   GET /api/invitations/:token
- * @access  Public
- */
 export const validateInvitation = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
-  // Use organizationId as defined in your new Invitation model
   const invitation = await Invitation.findOne({ token }).populate(
     "organizationId",
     "name logo"
@@ -41,15 +35,9 @@ export const validateInvitation = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Accept invitation & Login for EXISTING users
- * @route   POST /api/invitations/accept-login
- * @access  Public
- */
 export const acceptInviteLogin = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
 
-  // 1. Verification
   const invitation = await Invitation.findOne({ token });
   if (!invitation) {
     res.status(404);
@@ -62,13 +50,11 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
     throw new Error("AUTH_USER_NOT_FOUND");
   }
 
-  // 2. Authenticate user
   if (!(await user.matchPassword(password))) {
     res.status(401);
     throw new Error("AUTH_INVALID_CREDENTIALS");
   }
 
-  // 3. Enforce Max Members Limit (in case the org filled up while the invite was pending)
   const organization = await Organization.findById(invitation.organizationId);
   if (!organization) {
     res.status(404);
@@ -84,7 +70,6 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
     throw new Error("ORG_MAX_MEMBERS_EXCEEDED");
   }
 
-  // 4. Add organization to memberships if not already present
   const alreadyMember = user.memberships.some(
     (m) => m.organizationId.toString() === invitation.organizationId.toString()
   );
@@ -98,16 +83,16 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  // 5. Cleanup and Response
   await Invitation.findByIdAndDelete(invitation._id);
 
-  await MemberHistory.create({
+  logAudit({
     organizationId: invitation.organizationId,
-    action: "INVITE_ACCEPTED",
     actor: user._id,
-    targetUser: user._id,
-    targetEmail: user.email,
-    details: { role: invitation.role },
+    module: "TEAM",
+    action: "INVITE_ACCEPTED",
+    targetModel: "User",
+    targetId: user._id,
+    metadata: { role: invitation.role, targetEmail: user.email, targetName: user.name },
   });
 
   await user.populate("memberships.organizationId");
@@ -122,15 +107,9 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Accept invitation & Register for NEW users
- * @route   POST /api/invitations/accept-register
- * @access  Public
- */
 export const acceptInviteRegister = asyncHandler(async (req, res) => {
-  const { token, password, name } = req.body; // Removed language
+  const { token, password, name } = req.body;
 
-  // 1. Verification
   const invitation = await Invitation.findOne({ token });
   if (!invitation) {
     res.status(404);
@@ -143,7 +122,6 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
     throw new Error("AUTH_USER_EXISTS");
   }
 
-  // 2. Enforce Max Members Limit
   const organization = await Organization.findById(invitation.organizationId);
   if (!organization) {
     res.status(404);
@@ -159,7 +137,6 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
     throw new Error("ORG_MAX_MEMBERS_EXCEEDED");
   }
 
-  // 3. Create the new user (Cleaned up: no language or verification fields)
   const newUser = await User.create({
     name: name || invitation.name,
     email: invitation.email,
@@ -173,16 +150,16 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
     ],
   });
 
-  // 4. Delete invitation
   await Invitation.findByIdAndDelete(invitation._id);
 
-  await MemberHistory.create({
+  logAudit({
     organizationId: invitation.organizationId,
-    action: "INVITE_ACCEPTED",
     actor: newUser._id,
-    targetUser: newUser._id,
-    targetEmail: newUser.email,
-    details: { role: invitation.role },
+    module: "TEAM",
+    action: "INVITE_ACCEPTED",
+    targetModel: "User",
+    targetId: newUser._id,
+    metadata: { role: invitation.role, targetEmail: newUser.email, targetName: newUser.name },
   });
 
   if (newUser) {

@@ -37,13 +37,15 @@ const organizationSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
-    phoneNumber: {
-      country: { type: String, default: "FR" }, // Default ISO Code 
-      number: { type: String, default: "" },    // e.g. "+33 6 00 00 00 00"
-    },
+    
     website: { 
       type: String,
       trim: true 
+    },
+
+    phoneNumber: {
+      country: { type: String, default: "FR" }, // Default ISO Code 
+      number: { type: String, default: "" },    // e.g. "+33 6 00 00 00 00"
     },
 
     // --- Geographic Location ---
@@ -52,7 +54,7 @@ const organizationSchema = new mongoose.Schema(
       city: { type: String, default: "" },
       state: { type: String, default: "" },
       zipCode: { type: String, default: "" },
-      country: { type: String, default: "France" },
+      country: { type: String, default: "" },
     },
 
     // --- Regulatory Information ---

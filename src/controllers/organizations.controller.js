@@ -1,7 +1,7 @@
 /**
  * @fileoverview Organization Controller
  * Manages the lifecycle of Organization entities, including team management,
- * branding, membership limits, and roles.
+ * branding, membership limits, roles, and audit history.
  */
 
 import asyncHandler from "express-async-handler";
@@ -14,23 +14,18 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getTransporter } from "../config/mail.js";
-import MemberHistory from "../models/MemberHistory.js";
+import AuditLog from "../models/AuditLog.js"; // Needed for fetching history
+import { logAudit } from "../middlewares/audit.service.js"; // New polymorphic service
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Valid roles for the current application scope
 const VALID_ROLES = ["admin", "employee"];
 
 // ==========================================
 // --- Organization Profile & CRUD ---
 // ==========================================
 
-/**
- * @desc    Retrieve a single organization by its ID
- * @route   GET /api/organizations/:id
- * @access  Private
- */
 export const getOrganizationById = asyncHandler(async (req, res) => {
   const organization = await Organization.findById(req.params.id);
   if (!organization) {
@@ -40,11 +35,6 @@ export const getOrganizationById = asyncHandler(async (req, res) => {
   res.json(organization);
 });
 
-/**
- * @desc    Update organization profile and settings
- * @route   PUT /api/organizations/:id
- * @access  Private (Admin only)
- */
 export const updateOrganization = asyncHandler(async (req, res) => {
   const organization = await Organization.findById(req.params.id);
 
@@ -58,7 +48,6 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     socialLinks, website, registrationNumber, taxId, timezone, maxMembers
   } = req.body;
 
-  // --- MEMBER LIMIT VALIDATION ---
   if (maxMembers && maxMembers !== organization.maxMembers) {
     const currentMemberCount = await User.countDocuments({
       "memberships.organizationId": organization._id,
@@ -71,11 +60,9 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     organization.maxMembers = maxMembers;
   }
 
-  // --- TRACKING DES CHANGEMENTS ---
   let isAddressUpdated = !!address;
   let isProfileUpdated = !!(name || legalName || description || email || website || registrationNumber || taxId || timezone || phoneNumber || socialLinks || maxMembers);
 
-  // Top-Level Field Updates
   if (name !== undefined) organization.name = name;
   if (legalName !== undefined) organization.legalName = legalName;
   if (description !== undefined) organization.description = description;
@@ -91,21 +78,26 @@ export const updateOrganization = asyncHandler(async (req, res) => {
 
   const updatedOrganization = await organization.save();
 
-  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
+  // --- POLYMORPHIC AUDIT LOG ---
   if (isAddressUpdated) {
-    await MemberHistory.create({
+    logAudit({
       organizationId: organization._id,
-      action: "ORG_ADDRESS_UPDATED",
       actor: req.user._id,
+      module: "SETTINGS",
+      action: "ORG_ADDRESS_UPDATED",
+      targetModel: "Organization",
+      targetId: organization._id,
     });
   }
 
-  // S'il y a d'autres champs mis à jour que l'adresse, on trace aussi "ORG_UPDATED"
   if (isProfileUpdated && Object.keys(req.body).some(key => key !== 'address')) {
-    await MemberHistory.create({
+    logAudit({
       organizationId: organization._id,
-      action: "ORG_UPDATED",
       actor: req.user._id,
+      module: "SETTINGS",
+      action: "ORG_UPDATED",
+      targetModel: "Organization",
+      targetId: organization._id,
     });
   }
   
@@ -115,11 +107,6 @@ export const updateOrganization = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Permanently delete an organization
- * @route   DELETE /api/organizations/:id
- * @access  Private (Admin only)
- */
 export const deleteOrganization = asyncHandler(async (req, res) => {
   const organizationId = req.params.id;
   const organization = await Organization.findById(organizationId);
@@ -131,22 +118,15 @@ export const deleteOrganization = asyncHandler(async (req, res) => {
 
   await organization.deleteOne();
 
-  // Cleanup: Remove this organization from all users' memberships
   await User.updateMany(
     { "memberships.organizationId": organizationId },
     { $pull: { memberships: { organizationId: organizationId } } },
   );
-  // Cleanup: Delete pending invitations
   await Invitation.deleteMany({ organizationId });
 
   res.status(200).json({ message: "ORG_DELETED" });
 });
 
-/**
- * @desc    Upload organization logo
- * @route   POST /api/organizations/:id/upload-logo
- * @access  Private
- */
 export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
   if (!req.file) {
     res.status(400);
@@ -161,7 +141,6 @@ export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
     throw new Error("ORG_NOT_FOUND");
   }
 
-  // Delete old logo
   if (organization.logo && organization.logo.includes("/api/images/")) {
     try {
       const oldFileName = organization.logo.split("/").pop();
@@ -176,11 +155,13 @@ export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
   organization.logo = `${process.env.BACKEND_URL}/api/images/organizations/${req.file.filename}`;
   await organization.save();
 
-  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
-  await MemberHistory.create({
+  logAudit({
     organizationId: organization._id,
-    action: "ORG_LOGO_UPLOADED",
     actor: req.user._id,
+    module: "SETTINGS",
+    action: "ORG_LOGO_UPLOADED",
+    targetModel: "Organization",
+    targetId: organization._id,
   });
 
   res.status(200).json({
@@ -189,11 +170,6 @@ export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Remove organization logo
- * @route   DELETE /api/organizations/:id/logo
- * @access  Private
- */
 export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
   const organization = await Organization.findById(req.params.id);
 
@@ -216,11 +192,13 @@ export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
   organization.logo = "";
   await organization.save();
 
-  // --- ENREGISTREMENT DANS L'HISTORIQUE ---
-  await MemberHistory.create({
+  logAudit({
     organizationId: organization._id,
-    action: "ORG_LOGO_DELETED",
     actor: req.user._id,
+    module: "SETTINGS",
+    action: "ORG_LOGO_DELETED",
+    targetModel: "Organization",
+    targetId: organization._id,
   });
 
   res.json({ message: "LOGO_REMOVED", logo: "" });
@@ -230,11 +208,6 @@ export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
 // --- Member & Invitation Management ---
 // ==========================================
 
-/**
- * @desc    Invite a new member via email (Enforces maxMembers)
- * @route   POST /api/organizations/:id/invite
- * @access  Private (Admin only)
- */
 export const inviteMember = asyncHandler(async (req, res) => {
   const { email, name, role, title } = req.body;
   const organizationId = req.params.id;
@@ -245,7 +218,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
     throw new Error("ORG_NOT_FOUND");
   }
 
-  // ENFORCE LIMIT: Count active members + pending invites
   const activeMembers = await User.countDocuments({ "memberships.organizationId": organizationId });
   const pendingInvites = await Invitation.countDocuments({ organizationId, status: "Pending" });
   
@@ -256,7 +228,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   const assignedRole = VALID_ROLES.includes(role) ? role : "employee";
 
-  // Check if the user is already an active member
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     const isAlreadyMember = existingUser.memberships.some(
@@ -271,7 +242,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
   const token = crypto.randomBytes(32).toString("hex");
   const inviteUrl = `${process.env.FRONTEND_URL}/accept-invitation/${token}`;
 
-  // 1. Création de l'invitation
   const newInvitation = await Invitation.create({
     name,
     email,
@@ -283,13 +253,14 @@ export const inviteMember = asyncHandler(async (req, res) => {
     status: "Pending",
   });
 
-  // 2. Création de l'historique 
-  const newHistory = await MemberHistory.create({
+  logAudit({
     organizationId,
-    action: "INVITE_SENT",
     actor: req.user._id,
-    targetEmail: email,
-    details: { role: assignedRole },
+    module: "TEAM",
+    action: "INVITE_SENT",
+    targetModel: "Invitation",
+    targetId: newInvitation._id,
+    metadata: { targetEmail: email, role: assignedRole, targetName: name },
   });
   
   try {
@@ -314,21 +285,12 @@ export const inviteMember = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "INVITATION_SENT" });
   } catch (err) {
     console.error("Email Error:", err);
-    
-    // --- ROLLBACK
     if (newInvitation) await Invitation.findByIdAndDelete(newInvitation._id);
-    if (newHistory) await MemberHistory.findByIdAndDelete(newHistory._id); 
-    
     res.status(500);
     throw new Error("INVITATION_FAILED");
   }
 });
 
-/**
- * @desc    Fetch all active members and pending invitations for an organization
- * @route   GET /api/organizations/:id/members
- * @access  Private
- */
 export const getOrganizationMembers = asyncHandler(async (req, res) => {
   const { search } = req.query;
   const organizationId = req.params.id;
@@ -377,11 +339,6 @@ export const getOrganizationMembers = asyncHandler(async (req, res) => {
   res.json([...activeMembers, ...pendingInvites]);
 });
 
-/**
- * @desc    Modify a member's role
- * @route   PUT /api/organizations/:id/members/:memberId/role
- * @access  Private (Admin only)
- */
 export const updateMemberRole = asyncHandler(async (req, res) => {
   const { id: organizationId, memberId } = req.params;
   const { role } = req.body;
@@ -407,49 +364,42 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
   }
 
   const oldRole = member.memberships[membershipIndex].role;
-
-  // Mettre à jour le rôle
   member.memberships[membershipIndex].role = role;
   await member.save();
 
-  // --- CRÉER L'HISTORIQUE ---
-  await MemberHistory.create({
+  logAudit({
     organizationId,
-    action: "ROLE_UPDATED",
     actor: req.user._id,
-    targetUser: memberId,
-    targetEmail: member.email,
-    details: { role: role, oldRole: oldRole }, 
+    module: "TEAM",
+    action: "ROLE_UPDATED",
+    targetModel: "User",
+    targetId: memberId,
+    metadata: { role: role, oldRole: oldRole, targetEmail: member.email, targetName: member.name },
   });
 
   res.status(200).json({ message: "ROLE_UPDATED", role });
 });
 
-/**
- * @desc    Remove a member from the organization or cancel a pending invitation
- * @route   DELETE /api/organizations/:id/members/:memberId
- * @access  Private (Admin only)
- */
 export const removeMember = asyncHandler(async (req, res) => {
   const { id: organizationId, memberId } = req.params;
 
-  // Case 1: Pending invitation
   const invitation = await Invitation.findById(memberId);
   if (invitation) {
     await Invitation.findByIdAndDelete(memberId);
 
-    // --- HISTORIQUE ---
-    await MemberHistory.create({
+    logAudit({
       organizationId,
-      action: "INVITE_CANCELLED",
       actor: req.user._id,
-      targetEmail: invitation.email,
+      module: "TEAM",
+      action: "INVITE_CANCELLED",
+      targetModel: "Invitation",
+      targetId: memberId,
+      metadata: { targetEmail: invitation.email, targetName: invitation.name },
     });
 
     return res.status(200).json({ message: "INVITATION_CANCELLED" });
   }
 
-  // Case 2: Active User
   const user = await User.findById(memberId);
   if (user) {
     user.memberships = user.memberships.filter(
@@ -457,13 +407,14 @@ export const removeMember = asyncHandler(async (req, res) => {
     );
     await user.save();
 
-    // --- HISTORIQUE ---
-    await MemberHistory.create({
+    logAudit({
       organizationId,
-      action: "MEMBER_REMOVED",
       actor: req.user._id,
-      targetUser: memberId,
-      targetEmail: user.email,
+      module: "TEAM",
+      action: "MEMBER_REMOVED",
+      targetModel: "User",
+      targetId: memberId,
+      metadata: { targetEmail: user.email, targetName: user.name },
     });
 
     return res.status(200).json({ message: "MEMBER_REMOVED" });
@@ -473,11 +424,6 @@ export const removeMember = asyncHandler(async (req, res) => {
   throw new Error("MEMBER_NOT_FOUND");
 });
 
-/**
- * @desc    Allow the logged-in user to leave an organization
- * @route   POST /api/organizations/:id/leave
- * @access  Private
- */
 export const leaveOrganization = asyncHandler(async (req, res) => {
   const organizationId = req.params.id;
   const user = await User.findById(req.user._id);
@@ -491,7 +437,6 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
     throw new Error("MEMBER_NOT_IN_ORG");
   }
 
-  // Prevention: Don't allow the last Admin to leave
   if (user.memberships[membershipIndex].role === "admin") {
     const otherAdmins = await User.countDocuments({
       memberships: {
@@ -512,28 +457,27 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
   user.memberships.splice(membershipIndex, 1);
   await user.save();
 
-  await MemberHistory.create({
+  logAudit({
     organizationId,
+    actor: req.user._id,
+    module: "TEAM",
     action: "MEMBER_LEFT",
-    actor: req.user._id,        
-    targetUser: req.user._id,   
-    targetEmail: user.email,
+    targetModel: "User",
+    targetId: req.user._id,
+    metadata: { targetEmail: user.email, targetName: user.name },
   });
 
   res.status(200).json({ message: "LEFT_ORG", user });
 });
 
-
 /**
- * @desc    Get organization history (audit logs) with pagination
- * @route   GET /api/organizations/:id/history
- * @access  Private (Admin recommended)
+ * @desc    Get organization history (audit logs) with pagination and module/target filtering
+ * @route   GET /api/organizations/:id/history?module=TEAM&page=1&targetId=123
+ * @access  Private
  */
 export const getOrganizationHistory = asyncHandler(async (req, res) => {
   const organizationId = req.params.id;
-  
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 10;
+  const { page = 1, limit = 10, module, targetId } = req.query;
   const skip = (page - 1) * limit;
 
   const organization = await Organization.findById(organizationId);
@@ -542,11 +486,17 @@ export const getOrganizationHistory = asyncHandler(async (req, res) => {
     throw new Error("ORG_NOT_FOUND");
   }
 
-  const totalItems = await MemberHistory.countDocuments({ organizationId });
+  // Support module filtering
+  const query = { organizationId };
+  if (module) query.module = module;
+  // FILTER BY SPECIFIC ITEM/USER
+  if (targetId) query.targetId = targetId;
 
-  const history = await MemberHistory.find({ organizationId })
+  const totalItems = await AuditLog.countDocuments(query);
+
+  const history = await AuditLog.find(query)
     .populate("actor", "name email profileImage") 
-    .populate("targetUser", "name email profileImage") 
+    .populate("targetId", "name email profileImage") // Optional: depending on your frontend needs
     .sort({ createdAt: -1 }) 
     .skip(skip)
     .limit(limit);
@@ -554,10 +504,10 @@ export const getOrganizationHistory = asyncHandler(async (req, res) => {
   res.status(200).json({
     data: history,
     pagination: {
-      currentPage: page,
+      currentPage: Number(page),
       totalPages: Math.ceil(totalItems / limit),
       totalItems,
-      limit,
+      limit: Number(limit),
       hasNextPage: page * limit < totalItems,
       hasPrevPage: page > 1,
     },

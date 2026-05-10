@@ -21,6 +21,9 @@ import generalRoutes from "./routes/general.routes.js";
 import userRoutes from "./routes/users.routes.js";
 import invitationRoutes from "./routes/invitations.routes.js";
 import organizationRoutes from "./routes/organizations.routes.js";
+import inventoryRoutes from "./routes/inventory.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
+
 const app = express();
 
 // --- Middlewares ---
@@ -38,7 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Public Health Check Endpoint
-app.get("/health", (req, res) => {
+app.get("/health", (req, res) => { 
   res.status(200).json({
     status: "success",
     message: "Bambu API is up and running!",
@@ -55,6 +58,8 @@ app.use("/api/images", express.static(path.join(process.cwd(), "images")));
 app.use("/api/users", userRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/bookings", bookingRoutes); 
 app.use("/api", generalRoutes); 
 
 
