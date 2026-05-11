@@ -3,8 +3,7 @@ import mongoose from "mongoose";
 import Item from "../models/Item.js";
 import StockMovement from "../models/StockMovement.js";
 import { logAudit } from "../middlewares/audit.service.js";
-
-
+import dayjs from "dayjs"; 
 /**
  * @desc    Get all items for an organization
  * @route   GET /api/inventory/items
@@ -131,7 +130,7 @@ const { organizationId, itemId, type, quantity, projectId, notes } = req.body;
   }
 });*/
 
-
+ 
 /**
  * @desc    Record a stock IN or OUT (Dev Mode: Transactions Bypassed)
  * @route   POST /api/inventory/movement
@@ -185,4 +184,8 @@ export const recordStockMovement = asyncHandler(async (req, res) => {
 
   res.status(200).json({ message: "MOVEMENT_RECORDED", currentQuantity: item.currentQuantity });
 });
+
+
+
+
 

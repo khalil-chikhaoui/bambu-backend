@@ -6,7 +6,7 @@ const router = express.Router();
 
 // The Resources Endpoints
 router.route("/resources")
-  .get(protect, getResources)    // <-- Make sure this is here!
+  .get(protect, getResources)  
   .post(protect, createResource);
 
 // The Bookings Endpoints

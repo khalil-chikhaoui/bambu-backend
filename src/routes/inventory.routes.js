@@ -4,7 +4,8 @@ import {
   createItem, 
   recordStockMovement, 
   getItems, 
-  getItemById 
+  getItemById, 
+
 } from "../controllers/inventory.controller.js";
 
 const router = express.Router();
@@ -18,8 +19,10 @@ router.route("/items")
 router.route("/items/:id")
   .get(protect, getItemById);
 
+
+
 // Route for ACID stock movements
 router.route("/movement")
   .post(protect, recordStockMovement);
 
-export default router;
+export default router; 

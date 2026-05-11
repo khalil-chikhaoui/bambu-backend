@@ -30,7 +30,7 @@ const auditLogSchema = new mongoose.Schema(
       ], 
       required: true,
       index: true,
-    },
+    }, 
     action: {
       type: String,
       required: true, // e.g., "INVITE_SENT", "ORG_ADDRESS_UPDATED"

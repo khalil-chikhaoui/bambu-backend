@@ -13,4 +13,4 @@ const stockMovementSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("StockMovement", stockMovementSchema);
+export default mongoose.model("StockMovement", stockMovementSchema); 

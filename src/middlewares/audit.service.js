@@ -21,7 +21,7 @@ export const logAudit = async ({
       module,
       action,
       targetModel,
-      targetId,
+      targetId, 
       metadata,
       diff,
     });
