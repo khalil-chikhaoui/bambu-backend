@@ -1,3 +1,4 @@
+// src/controllers/inventory/items.controller.js
 import asyncHandler from "express-async-handler";
 import Item from "../../models/Item.js";
 import StockMovement from "../../models/StockMovement.js";

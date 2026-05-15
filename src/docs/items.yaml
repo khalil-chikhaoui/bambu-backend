@@ -1,0 +1,272 @@
+paths:
+  /inventory/items:
+    get:
+      tags:
+        - Inventory Items
+      summary: "Get All Inventory Items"
+      description: |
+        Retrieve all inventory items for an organization with optional search and filtering.
+        Supports full-text search on item name and SKU.
+        Requires authentication and organization membership.
+      operationId: getItems
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Organization ID to fetch items for
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search items by name or SKU (case-insensitive)
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category (e.g., "IT", "Tools", "Office")
+      responses:
+        "200":
+          description: "Items retrieved successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Unauthorized"
+    
+    post:
+      tags:
+        - Inventory Items
+      summary: "Create New Inventory Item"
+      description: |
+        Create a new inventory item with initial details.
+        Automatically creates first stock movement entry (CREATED type).
+        SKU must be unique within organization.
+      operationId: createItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - organizationId
+                - name
+                - sku
+                - category
+              properties:
+                organizationId:
+                  type: string
+                  example: "507f1f77bcf86cd799439011"
+                  description: Organization this item belongs to
+                name:
+                  type: string
+                  example: "Laptop Dell XPS 15"
+                  description: Item name/description
+                sku:
+                  type: string
+                  example: "DELL-XPS-15-001"
+                  description: Stock Keeping Unit (must be unique per org)
+                category:
+                  type: string
+                  example: "IT"
+                  description: Item category for organization
+                minThreshold:
+                  type: number
+                  example: 5
+                  description: Minimum stock level before alert (defaults to 0)
+      responses:
+        "201":
+          description: "Item created successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        "400":
+          description: "Missing required fields or SKU already exists"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "SKU_ALREADY_EXISTS"
+        "401":
+          description: "Unauthorized"
+
+  /inventory/items/{id}:
+    get:
+      tags:
+        - Inventory Items
+      summary: "Get Item Details"
+      description: |
+        Retrieve detailed information about a specific inventory item.
+      operationId: getItemById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Item ID (MongoDB ObjectId)
+      responses:
+        "200":
+          description: "Item details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        "401":
+          description: "Unauthorized"
+        "404":
+          description: "Item not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ITEM_NOT_FOUND"
+    
+    put:
+      tags:
+        - Inventory Items
+      summary: "Update Item Details"
+      description: |
+        Update item information (name, category, SKU, minimum threshold).
+        Changes are tracked in stock ledger for audit purposes.
+        SKU uniqueness is validated.
+      operationId: updateItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Item ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Laptop Dell XPS 15 (Updated)"
+                  description: New item name
+                sku:
+                  type: string
+                  example: "DELL-XPS-15-002"
+                  description: New SKU (must be unique)
+                category:
+                  type: string
+                  example: "Computers"
+                  description: New category
+                minThreshold:
+                  type: number
+                  example: 10
+                  description: New minimum threshold
+      responses:
+        "200":
+          description: "Item updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        "400":
+          description: "Invalid update (e.g., SKU duplicate)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "SKU_ALREADY_EXISTS"
+        "401":
+          description: "Unauthorized"
+        "404":
+          description: "Item not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ITEM_NOT_FOUND"
+
+components:
+  schemas:
+    Item:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        organizationId:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+        name:
+          type: string
+          example: "Laptop Dell XPS 15"
+        sku:
+          type: string
+          example: "DELL-XPS-15-001"
+        category:
+          type: string
+          example: "IT"
+        currentQuantity:
+          type: number
+          example: 12
+          description: Current stock level
+        minThreshold:
+          type: number
+          example: 5
+          description: Minimum stock before alert
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-05-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-05-15T10:30:00.000Z"

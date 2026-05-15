@@ -136,7 +136,7 @@ const seedDatabase = async () => {
     await mongoose.disconnect(); // Clean disconnection
     process.exit(0); 
   } catch (error) {
-    console.error("❌ Error seeding database:", error.message);
+    console.log("❌ Error seeding database:", error.message);
     await mongoose.disconnect();
     process.exit(1);
   }

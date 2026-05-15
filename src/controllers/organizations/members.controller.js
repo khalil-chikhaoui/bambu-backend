@@ -1,3 +1,4 @@
+// src/controllers/organizations/members.controller.js
 import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
 import User from "../../models/User.js";
@@ -19,6 +20,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
     throw new Error("ORG_NOT_FOUND");
   }
 
+  // Business Logic: Check total seats (Active + Pending)
   const activeMembers = await User.countDocuments({
     "memberships.organizationId": organizationId,
   });
@@ -34,6 +36,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   const assignedRole = VALID_ROLES.includes(role) ? role : "employee";
 
+  // Check if user is already a member
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     const isAlreadyMember = existingUser.memberships.some(
@@ -48,9 +51,10 @@ export const inviteMember = asyncHandler(async (req, res) => {
   const token = crypto.randomBytes(32).toString("hex");
   const inviteUrl = `${process.env.FRONTEND_URL}/accept-invitation/${token}`;
 
+  // Create Invitation
   const newInvitation = await Invitation.create({
-    firstName: firstName,
-    lastName: lastName,
+    firstName, // Fixed: Using correctly destructured variable
+    lastName, // Fixed: Using correctly destructured variable
     email,
     organizationId,
     role: assignedRole,
@@ -60,8 +64,9 @@ export const inviteMember = asyncHandler(async (req, res) => {
     status: "Pending",
   });
 
-  const inviteFullName = `${finalFirstName} ${finalLastName}`.trim();
+  const inviteFullName = `${firstName} ${lastName}`.trim();
 
+  // Log to Audit Ledger
   logAudit({
     organizationId,
     actor: req.user._id,
@@ -85,19 +90,22 @@ export const inviteMember = asyncHandler(async (req, res) => {
       subject: `Invitation à rejoindre ${organization.name}`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 12px;">
-          <h2 style="color: #184c16;">Bonjour ${finalFirstName}!</h2>
+          <h2 style="color: #184c16;">Bonjour ${firstName}!</h2>
           <p>Vous avez été invité(e) à rejoindre <strong>${organization.name}</strong>.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${inviteUrl}" style="background: #184c16; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Accepter l'invitation</a>
           </div>
-          <p style="font-size: 12px; color: #999;">Envoyé par ${req.user.firstName} ${req.user.lastName}.</p>
+          <p style="font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+            Envoyé par ${req.user.firstName} ${req.user.lastName} de ${organization.name}.
+          </p>
         </div>
       `,
     });
 
     res.status(200).json({ message: "INVITATION_SENT" });
   } catch (err) {
-    console.error("Email Error:", err);
+    console.log("Email Error:", err);
+    // Cleanup if email fails
     if (newInvitation) await Invitation.findByIdAndDelete(newInvitation._id);
     res.status(500);
     throw new Error("INVITATION_FAILED");
@@ -279,11 +287,11 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
 
   if (user.memberships[membershipIndex].role === "admin") {
     const otherAdmins = await User.countDocuments({
+      _id: { $ne: user._id },
       memberships: {
         $elemMatch: {
           organizationId: organizationId,
           role: "admin",
-          _id: { $ne: user._id },
         },
       },
     });

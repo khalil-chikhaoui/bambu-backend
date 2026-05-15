@@ -1,62 +1,309 @@
-tags:
-  - name: Invitations
-    description: Flux d'acceptation des invitations (Utilisateurs existants et nouveaux)
-
 paths:
   /invitations/{token}:
     get:
       tags:
         - Invitations
-      summary: Vérifier un token d'invitation
-      security: [] # Public route
+      summary: "Validate Invitation Token"
+      description: |
+        Verify that an invitation token is valid and retrieve invitation details.
+        Check if user already exists (helps determine signup vs login flow).
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: validateInvitation
       parameters:
-        - in: path
-          name: token
+        - name: token
+          in: path
           required: true
           schema:
             type: string
-          example: "votre-token-securise-ici"
+          description: Invitation token (32-byte hex string)
       responses:
-        '200':
-          description: Token valide, retourne les infos de l'invitation
-        '404':
-          description: Invitation invalide ou expirée
+        "200":
+          description: "Invitation is valid"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isValid:
+                    type: boolean
+                    example: true
+                  email:
+                    type: string
+                    example: "new.employee@example.com"
+                  firstName:
+                    type: string
+                    example: "Jean"
+                  lastName:
+                    type: string
+                    example: "Dupont"
+                  role:
+                    type: string
+                    enum: ["admin", "employee"]
+                    example: "employee"
+                  organization:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: "507f1f77bcf86cd799439011"
+                      name:
+                        type: string
+                        example: "Bambu HQ"
+                      logo:
+                        type: string
+                        example: "http://localhost:3040/api/images/organizations/logo_abc.jpg"
+                  userExists:
+                    type: boolean
+                    example: false
+                    description: Whether user with this email already exists
+        "404":
+          description: "Invitation token is invalid or expired"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "INVITATION_INVALID"
 
   /invitations/accept-login:
     post:
       tags:
         - Invitations
-      summary: Accepter (Utilisateur Existant)
-      security: []
+      summary: "Accept Invitation (Existing User)"
+      description: |
+        Accept an invitation when user already has an account.
+        Validates password and adds organization membership.
+        Deletes invitation after acceptance. Returns JWT session token.
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: acceptInviteLogin
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-            example:
-              token: "votre-token-securise-ici"
-              password: "mot-de-passe-utilisateur"
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                  example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                  description: Invitation token from email
+                password:
+                  type: string
+                  example: "password123"
+                  description: User's existing account password
       responses:
-        '200':
-          description: Invitation acceptée, utilisateur connecté
+        "200":
+          description: "Invitation accepted successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    description: JWT session token
+        "400":
+          description: "Invalid password or password mismatch"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_INVALID_CREDENTIALS"
+        "403":
+          description: "Organization has reached member limit"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_MAX_MEMBERS_EXCEEDED"
+        "404":
+          description: "Invitation or user not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "INVITATION_INVALID"
+                      - "AUTH_USER_NOT_FOUND"
+                      - "ORG_NOT_FOUND"
 
   /invitations/accept-register:
     post:
       tags:
         - Invitations
-      summary: Accepter (Nouvel Utilisateur)
-      security: []
+      summary: "Accept Invitation (New User)"
+      description: |
+        Accept an invitation and create a new user account in one step.
+        Creates user and automatically adds organization membership.
+        Deletes invitation after acceptance. Returns JWT session token.
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: acceptInviteRegister
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-            example:
-              token: "votre-token-securise-ici"
-              name: "Nouveau Membre"
-              password: "MySecurePassword123"
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                  example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                  description: Invitation token from email
+                password:
+                  type: string
+                  example: "securePassword123!"
+                  description: Password for new account
       responses:
-        '201':
-          description: Compte créé et invitation acceptée
+        "201":
+          description: "User created and invitation accepted"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    description: JWT session token
+        "400":
+          description: "User already exists or invalid data"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "USER_ALREADY_EXISTS"
+                      - "INVALID_DATA"
+        "403":
+          description: "Organization has reached member limit"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_MAX_MEMBERS_EXCEEDED"
+        "404":
+          description: "Invitation or organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "INVITATION_INVALID"
+                      - "ORG_NOT_FOUND"
+
+components:
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        firstName:
+          type: string
+          example: "Jean"
+        lastName:
+          type: string
+          example: "Dupont"
+        email:
+          type: string
+          example: "jean@example.com"
+        profileImage:
+          type: string
+          example: "http://localhost:3040/api/images/users/avatar_abc.jpg"
+        phoneNumber:
+          type: object
+          properties:
+            country:
+              type: string
+            number:
+              type: string
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zipCode:
+              type: string
+            country:
+              type: string
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              organizationId:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  name:
+                    type: string
+                  logo:
+                    type: string
+              role:
+                type: string
+              title:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

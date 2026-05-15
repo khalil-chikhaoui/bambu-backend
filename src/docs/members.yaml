@@ -1,0 +1,357 @@
+paths:
+  /organizations/{id}/members:
+    get:
+      tags:
+        - Team Members
+      summary: "Get Organization Members"
+      description: |
+        Retrieve all members (active + pending invitations) for an organization.
+        Supports search by name or email.
+      operationId: getOrganizationMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by first name, last name, or email
+      responses:
+        "200":
+          description: "Members list retrieved successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+        "401":
+          description: "Unauthorized"
+
+  /organizations/{id}/invite:
+    post:
+      tags:
+        - Team Members
+      summary: "Invite Member to Organization"
+      description: |
+        Send invitation to a new user to join the organization.
+        Checks member seat availability. Sends email with acceptance link.
+        Invitation expires after 7 days.
+      operationId: inviteMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - firstName
+                - lastName
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "new.employee@example.com"
+                  description: Email of person to invite
+                firstName:
+                  type: string
+                  example: "Jean"
+                  description: First name of invitee
+                lastName:
+                  type: string
+                  example: "Dupont"
+                  description: Last name of invitee
+                role:
+                  type: string
+                  enum: ["admin", "employee"]
+                  example: "employee"
+                  description: Role in organization (defaults to employee)
+                title:
+                  type: string
+                  example: "Senior Developer"
+                  description: Professional title (defaults to Staff)
+      responses:
+        "200":
+          description: "Invitation sent successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "INVITATION_SENT"
+        "400":
+          description: "Member already exists or invalid role"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "MEMBER_ALREADY_EXISTS"
+                      - "INVALID_ROLE"
+        "403":
+          description: "Organization has reached max members"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_MAX_MEMBERS_EXCEEDED"
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
+
+  /organizations/{id}/members/{memberId}/role:
+    put:
+      tags:
+        - Team Members
+      summary: "Update Member Role"
+      description: |
+        Change a member's role within the organization (admin or employee).
+        Requires admin role. Updates are audit logged.
+      operationId: updateMemberRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  enum: ["admin", "employee"]
+                  example: "admin"
+                  description: New role for the member
+      responses:
+        "200":
+          description: "Member role updated successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ROLE_UPDATED"
+                  role:
+                    type: string
+                    example: "admin"
+        "400":
+          description: "Invalid role"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "INVALID_ROLE"
+        "404":
+          description: "Member or organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "MEMBER_NOT_FOUND"
+                      - "MEMBER_NOT_IN_ORG"
+
+  /organizations/{id}/members/{memberId}:
+    delete:
+      tags:
+        - Team Members
+      summary: "Remove Member from Organization"
+      description: |
+        Remove an active member or cancel a pending invitation.
+        Automatically detects whether target is user or invitation.
+        Requires admin role.
+      operationId: removeMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID or Invitation ID
+      responses:
+        "200":
+          description: "Member removed or invitation cancelled"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    enum:
+                      - "MEMBER_REMOVED"
+                      - "INVITATION_CANCELLED"
+        "404":
+          description: "Member not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "MEMBER_NOT_FOUND"
+
+  /organizations/{id}/leave:
+    post:
+      tags:
+        - Team Members
+      summary: "Leave Organization"
+      description: |
+        User voluntarily leaves an organization.
+        Prevents last admin from leaving. Action is audit logged.
+      operationId: leaveOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+      responses:
+        "200":
+          description: "Successfully left organization"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "LEFT_ORGANIZATION"
+        "400":
+          description: "Cannot leave if only admin or not a member"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    enum:
+                      - "MEMBER_NOT_IN_ORG"
+                      - "CANNOT_LEAVE_LAST_ADMIN"
+
+components:
+  schemas:
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        firstName:
+          type: string
+          example: "Jean"
+        lastName:
+          type: string
+          example: "Dupont"
+        name:
+          type: string
+          example: "Jean Dupont"
+        email:
+          type: string
+          example: "jean@example.com"
+        profileImage:
+          type: string
+          example: "http://localhost:3040/api/images/users/avatar_abc.jpg"
+        role:
+          type: string
+          enum: ["admin", "employee"]
+          example: "employee"
+        title:
+          type: string
+          example: "Senior Developer"
+        invitationStatus:
+          type: string
+          enum: ["Accepted", "Pending"]
+          example: "Accepted"
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true

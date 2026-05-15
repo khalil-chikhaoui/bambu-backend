@@ -1,3 +1,4 @@
+// src/controllers/organizations/branding.controller.js
 import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
 import fs from "fs";
@@ -30,7 +31,7 @@ export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
       const oldPath = path.join(storagePath, "organizations", oldFileName);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     } catch (err) {
-      console.error("Failed to delete old organization logo:", err.message);
+      console.log("Failed to delete old organization logo:", err.message);
     }
   }
 
@@ -68,7 +69,7 @@ export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
       const filePath = path.join(storagePath, "organizations", fileName);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (error) {
-      console.error(
+      console.log(
         "Persistent Organization Logo Delete Error:",
         error.message,
       );
