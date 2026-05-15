@@ -3,11 +3,11 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import jwt from 'jsonwebtoken';
-import Organization from '../../src/models/Organization.js'; 
+import Organization from '../../../src/models/Organization.js'; 
 
 // Import your code
-import { signIn, validateResetToken,resetPassword } from '../../src/controllers/users/auth.controller.js';
-import User from '../../src/models/User.js';
+import User from '../../../src/models/User.js';
+import { resetPassword, signIn, validateResetToken } from '../../../src/controllers/users/auth.controller.js';
 
 // Setup a Mini Express App just for testing these controllers
 const app = express();

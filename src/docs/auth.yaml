@@ -1,90 +1,317 @@
-tags:
-  - name: Authentication & Profile
-    description: Gestion des utilisateurs, connexion, et profils.
-
 paths:
   /users/signin:
     post:
       tags:
-        - Authentication & Profile
-      summary: Se connecter à l'ERP
-      description: Authentifie un utilisateur et retourne un token JWT.
-      security: [] # No auth required for login
+        - Authentication
+      summary: "Sign In / Login"
+      description: |
+        Authenticate user with email and password. Returns JWT token and user profile.
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: signIn
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - email
+                - password
               properties:
                 email:
                   type: string
+                  format: email
+                  example: "admin@bambu-services.com"
+                  description: User's email address
                 password:
                   type: string
-            example:
-              email: "admin@bambu-services.com"
-              password: "password123"
+                  example: "password123"
+                  description: User's password
+                rememberMe:
+                  type: boolean
+                  nullable: true
+                  example: true
+                  description: Extend token expiration if true
       responses:
-        '200':
-          description: Connexion réussie
-        '401':
-          description: Identifiants invalides
+        "200":
+          description: "Successfully signed in"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    description: JWT Bearer token
+        "400":
+          description: "Invalid email or password"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_INVALID_CREDENTIALS"
 
-  /users/profile:
-    get:
+  /users/forgot-password:
+    post:
       tags:
-        - Authentication & Profile
-      summary: Obtenir mon profil
-      description: Retourne les informations de l'utilisateur connecté basé sur son token JWT.
-      responses:
-        '200':
-          description: Profil récupéré avec succès
-        '401':
-          description: Non autorisé, token manquant ou invalide
-    put:
-      tags:
-        - Authentication & Profile
-      summary: Mettre à jour mon profil
+        - Authentication
+      summary: "Request Password Reset"
+      description: |
+        Request a password reset link. Sends email with reset token valid for 15 minutes.
+        Returns success regardless of email existence (security best practice).
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: forgotPassword
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - email
               properties:
-                name:
+                email:
                   type: string
-                password:
-                  type: string
-            example:
-              name: "Admin System Updated"
+                  format: email
+                  example: "admin@bambu-services.com"
+                  description: User's email address
       responses:
-        '200':
-          description: Profil mis à jour
+        "200":
+          description: "Reset link sent (or silently ignored if user doesn't exist)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "RESET_LINK_SENT"
+        "500":
+          description: "Email service failed"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "EMAIL_SEND_FAILED"
 
-  /users/avatar:
+  /users/reset-password/{token}:
+    get:
+      tags:
+        - Authentication
+      summary: "Validate Reset Password Token"
+      description: |
+        Validate if the password reset token is still valid.
+        Token expires after 15 minutes.
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: validateResetToken
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: JWT reset token from email
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Token is valid"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "TOKEN_VALID"
+        "400":
+          description: "Token is invalid or expired"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_TOKEN_INVALID"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+
+  /users/reset-password:
     post:
       tags:
-        - Authentication & Profile
-      summary: Uploader un avatar
-      description: Upload une image de profil pour l'utilisateur connecté.
+        - Authentication
+      summary: "Reset Password with Token"
+      description: |
+        Complete password reset using the token from the reset email.
+        Token must be valid and not expired (15 minutes).
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: resetPassword
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              required:
+                - token
+                - password
               properties:
-                avatar:
+                token:
                   type: string
-                  format: binary
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  description: JWT reset token from email
+                password:
+                  type: string
+                  example: "newPassword123!"
+                  description: New password
       responses:
-        '200':
-          description: Avatar uploadé
-    delete:
-      tags:
-        - Authentication & Profile
-      summary: Supprimer mon avatar
-      responses:
-        '200':
-          description: Avatar supprimé
+        "200":
+          description: "Password reset successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "PASSWORD_RESET_SUCCESS"
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    description: New session JWT token
+        "400":
+          description: "Token is invalid or expired"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_TOKEN_INVALID"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+
+components:
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        firstName:
+          type: string
+          example: "Admin"
+        lastName:
+          type: string
+          example: "System"
+        email:
+          type: string
+          example: "admin@bambu-services.com"
+        profileImage:
+          type: string
+          example: "https://ui-avatars.com/api/?name=Admin+System"
+        phoneNumber:
+          type: object
+          properties:
+            country:
+              type: string
+              example: "FR"
+            number:
+              type: string
+              example: "+33 6 12 34 56 78"
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+              example: "10 Rue de la Paix"
+            city:
+              type: string
+              example: "Paris"
+            state:
+              type: string
+              example: "Île-de-France"
+            zipCode:
+              type: string
+              example: "75002"
+            country:
+              type: string
+              example: "France"
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              organizationId:
+                $ref: '#/components/schemas/OrganizationRef'
+              role:
+                type: string
+                enum: ["admin", "employee"]
+              title:
+                type: string
+                example: "Fondateur & CEO"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    OrganizationRef:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        name:
+          type: string
+          example: "Bambu HQ"
+        logo:
+          type: string
+          example: "https://res.cloudinary.com/dkh0hsbjg/image/upload/v1773570075/logo-beige_taidas.png"

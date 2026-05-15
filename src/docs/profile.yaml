@@ -1,0 +1,359 @@
+paths:
+  /users/profile:
+    get:
+      tags:
+        - User Profile
+      summary: "Get Current User Profile"
+      description: |
+        Retrieve the authenticated user's complete profile including all memberships
+        and organization details.
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "User profile retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        "401":
+          description: "Unauthorized - Invalid or missing token"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Unauthorized"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+    
+    put:
+      tags:
+        - User Profile
+      summary: "Update User Profile"
+      description: |
+        Update user's personal information including name, phone, address, and title.
+        Only authenticated users can update their own profile.
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: "Jean"
+                  description: User's first name
+                lastName:
+                  type: string
+                  example: "Dupont"
+                  description: User's last name
+                title:
+                  type: string
+                  example: "Lead Developer"
+                  description: Professional title (per organization)
+                organizationId:
+                  type: string
+                  example: "507f1f77bcf86cd799439011"
+                  description: Organization ID (required if updating title)
+                phoneNumber:
+                  type: object
+                  properties:
+                    country:
+                      type: string
+                      example: "FR"
+                    number:
+                      type: string
+                      example: "+33 6 12 34 56 78"
+                  description: Phone contact information
+                address:
+                  type: object
+                  properties:
+                    street:
+                      type: string
+                      example: "10 Rue de la Paix"
+                    city:
+                      type: string
+                      example: "Paris"
+                    state:
+                      type: string
+                      example: "Île-de-France"
+                    zipCode:
+                      type: string
+                      example: "75002"
+                    country:
+                      type: string
+                      example: "France"
+                  description: Residential address
+      responses:
+        "200":
+          description: "Profile updated successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  message:
+                    type: string
+                    example: "PROFILE_UPDATED"
+        "400":
+          description: "Bad request - validation error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+        "401":
+          description: "Unauthorized - Invalid or missing token"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Unauthorized"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+
+  /users/avatar:
+    post:
+      tags:
+        - User Profile
+      summary: "Upload User Avatar"
+      description: |
+        Upload a profile image/avatar for the authenticated user.
+        Deletes old avatar if it exists. Supports image files (jpg, png, gif, etc).
+      operationId: uploadUserAvatar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload
+      responses:
+        "200":
+          description: "Avatar uploaded successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "AVATAR_UPLOADED"
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+        "400":
+          description: "No file provided"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "UPLOAD_NO_FILE"
+        "401":
+          description: "Unauthorized - Invalid or missing token"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Unauthorized"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+    
+    delete:
+      tags:
+        - User Profile
+      summary: "Delete User Avatar"
+      description: |
+        Remove the user's profile avatar/image.
+        Does not throw error if no avatar exists.
+      operationId: deleteUserAvatar
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Avatar deleted successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "AVATAR_DELETED"
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+        "401":
+          description: "Unauthorized - Invalid or missing token"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Unauthorized"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "AUTH_USER_NOT_FOUND"
+
+components:
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        firstName:
+          type: string
+          example: "Admin"
+        lastName:
+          type: string
+          example: "System"
+        email:
+          type: string
+          example: "admin@bambu-services.com"
+        profileImage:
+          type: string
+          example: "http://localhost:3040/api/images/users/avatar_abc123.jpg"
+        phoneNumber:
+          type: object
+          properties:
+            country:
+              type: string
+              example: "FR"
+            number:
+              type: string
+              example: "+33 6 12 34 56 78"
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+              example: "10 Rue de la Paix"
+            city:
+              type: string
+              example: "Paris"
+            state:
+              type: string
+              example: "Île-de-France"
+            zipCode:
+              type: string
+              example: "75002"
+            country:
+              type: string
+              example: "France"
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              organizationId:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  name:
+                    type: string
+                  logo:
+                    type: string
+              role:
+                type: string
+                enum: ["admin", "employee"]
+              title:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

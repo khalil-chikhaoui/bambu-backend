@@ -1,3 +1,4 @@
+// src/controllers/organizations/branding.controller.js
 import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
 import fs from "fs";

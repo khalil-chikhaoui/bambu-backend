@@ -1,3 +1,4 @@
+// src/controllers/invitations/validation.controller.js
 import asyncHandler from "express-async-handler";
 import Invitation from "../../models/Invitation.js";
 import User from "../../models/User.js";

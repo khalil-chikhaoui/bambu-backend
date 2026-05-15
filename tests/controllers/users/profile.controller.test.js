@@ -5,15 +5,14 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import fs from 'fs';
 
-// Import your code
 import { 
   getProfile, 
   updateProfile, 
   uploadUserAvatar, 
   deleteUserAvatar 
-} from '../../src/controllers/users/profile.controller.js';
-import User from '../../src/models/User.js';
-import Organization from '../../src/models/Organization.js';
+} from '../../../src/controllers/users/profile.controller.js';
+import User from '../../../src/models/User.js';
+import Organization from '../../../src/models/Organization.js';
 
 // ==========================================
 // FAKE MIDDLEWARES FOR TESTING

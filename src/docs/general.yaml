@@ -1,0 +1,127 @@
+paths:
+  /contact:
+    post:
+      tags:
+        - General
+      summary: "Create Contact Message"
+      description: |
+        Send a contact/inquiry message from the public contact form. 
+        Includes honeypot spam protection and auto-sends confirmation emails to user and admin.
+        **Note:** This is a PUBLIC endpoint (no authentication required).
+      operationId: createContactMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject
+                - firstName
+                - lastName
+                - email
+                - message
+              properties:
+                subject:
+                  type: string
+                  example: "Demande d'information produit"
+                  description: Subject of the message
+                firstName:
+                  type: string
+                  example: "Jean"
+                  description: First name of the sender
+                lastName:
+                  type: string
+                  example: "Dupont"
+                  description: Last name of the sender
+                email:
+                  type: string
+                  format: email
+                  example: "jean.dupont@example.com"
+                  description: Email address of the sender
+                message:
+                  type: string
+                  example: "Bonjour, je suis intéressé par vos services..."
+                  description: Main message content
+                phone:
+                  type: string
+                  nullable: true
+                  example: "+33 6 12 34 56 78"
+                  description: Optional phone number
+                language:
+                  type: string
+                  nullable: true
+                  example: "fr"
+                  enum: ["en", "fr"]
+                  description: Message language (defaults to 'en')
+                wantsPhoneMeeting:
+                  type: boolean
+                  nullable: true
+                  example: true
+                  description: Whether user wants a phone meeting
+                hp_address:
+                  type: string
+                  nullable: true
+                  description: Honeypot field (leave empty for legitimate users - anti-spam)
+      responses:
+        "201":
+          description: "Message sent successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "MESSAGE_SENT_SUCCESSFULLY"
+        "400":
+          description: "Missing required fields"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "MISSING_FIELDS"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "EMAIL_SEND_FAILED"
+
+components:
+  schemas:
+    ContactMessage:
+      type: object
+      properties:
+        subject:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        message:
+          type: string
+        phone:
+          type: string
+        language:
+          type: string
+        wantsPhoneMeeting:
+          type: boolean

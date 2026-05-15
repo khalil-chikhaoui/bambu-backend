@@ -1,3 +1,4 @@
+// src/controllers/general.controller.js
 import asyncHandler from "express-async-handler";
 import ContactMessage from "../models/ContactMessage.js";
 import { getTransporter, getContactTemplates } from "../config/mail.js";

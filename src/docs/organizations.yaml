@@ -1,114 +1,423 @@
-tags:
-  - name: Organizations
-    description: Gestion des profils d'entreprise, logos et limites des membres.
-
 paths:
   /organizations/{id}:
     get:
       tags:
         - Organizations
-      summary: Récupérer une organisation
+      summary: "Get Organization Details"
+      description: |
+        Retrieve detailed information about a specific organization.
+        Requires authentication and membership in organization.
+      operationId: getOrganizationById
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: string
-          example: "Remplacez par l'ID de votre organisation issue de MongoDB"
+          description: Organization ID (MongoDB ObjectId)
       responses:
-        '200':
-          description: Organisation trouvée
+        "200":
+          description: "Organization details retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
+    
     put:
       tags:
         - Organizations
-      summary: Mettre à jour l'organisation
+      summary: "Update Organization Profile"
+      description: |
+        Update organization details including name, contact info, address, and settings.
+        Validates that maxMembers reduction doesn't violate current member count.
+        Requires admin role.
+      operationId: updateOrganization
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: string
+          description: Organization ID
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-            example:
-              name: "Bambu HQ"
-              maxMembers: 25
-              address:
-                city: "Lyon"
-                country: "France"
+              properties:
+                name:
+                  type: string
+                  example: "Bambu HQ"
+                  description: Organization name
+                legalName:
+                  type: string
+                  example: "Bambu Services SAS"
+                  description: Legal business name
+                description:
+                  type: string
+                  example: "Système ERP Principal pour la gestion des services Bambu."
+                  description: Organization description
+                email:
+                  type: string
+                  format: email
+                  example: "contact@bambu-services.com"
+                  description: Organization email
+                website:
+                  type: string
+                  example: "https://bambu-services.com"
+                  description: Organization website URL
+                maxMembers:
+                  type: number
+                  example: 20
+                  description: Maximum number of members allowed
+                timezone:
+                  type: string
+                  example: "Europe/Paris"
+                  description: Timezone for organization
+                taxId:
+                  type: string
+                  example: "FR12345678901"
+                  description: Tax/VAT identification number
+                registrationNumber:
+                  type: string
+                  example: "123 456 789 00012"
+                  description: Business registration number
+                phoneNumber:
+                  type: object
+                  properties:
+                    country:
+                      type: string
+                      example: "FR"
+                    number:
+                      type: string
+                      example: "+33 1 23 45 67 89"
+                address:
+                  type: object
+                  properties:
+                    street:
+                      type: string
+                      example: "128 Rue La Boétie"
+                    city:
+                      type: string
+                      example: "Paris"
+                    state:
+                      type: string
+                      example: "Île-de-France"
+                    zipCode:
+                      type: string
+                      example: "75008"
+                    country:
+                      type: string
+                      example: "France"
+                socialLinks:
+                  type: object
+                  properties:
+                    facebook:
+                      type: string
+                      example: "https://facebook.com/bambu"
+                    twitter:
+                      type: string
+                      example: "https://twitter.com/bambu"
+                    linkedin:
+                      type: string
+                      example: "https://linkedin.com/company/bambu"
+                    instagram:
+                      type: string
+                      example: "https://instagram.com/bambu"
       responses:
-        '200':
-          description: Organisation mise à jour
-          
+        "200":
+          description: "Organization updated successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organization:
+                    $ref: '#/components/schemas/Organization'
+                  message:
+                    type: string
+                    example: "ORG_UPDATED"
+        "400":
+          description: "Invalid request (e.g., maxMembers lower than current members)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_LIMIT_CONFLICT: Currently have 15 active members."
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
+    
+    delete:
+      tags:
+        - Organizations
+      summary: "Delete Organization"
+      description: |
+        Permanently delete an organization and all associated data
+        (members, invitations, inventory, etc.).
+        Requires admin role. CAUTION: This action is permanent and cannot be undone.
+      operationId: deleteOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+      responses:
+        "200":
+          description: "Organization deleted successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ORG_DELETED"
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
+
   /organizations/{id}/upload-logo:
     post:
       tags:
         - Organizations
-      summary: Uploader le logo de l'organisation
+      summary: "Upload Organization Logo"
+      description: |
+        Upload or replace the organization's logo/branding image.
+        Automatically deletes old logo if it exists.
+      operationId: uploadOrganizationLogo
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: string
+          description: Organization ID
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - file
               properties:
-                logo:
+                file:
                   type: string
                   format: binary
+                  description: Logo image file
       responses:
-        '200':
-          description: Logo uploadé avec succès
+        "200":
+          description: "Logo uploaded successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "LOGO_UPLOADED"
+                  organization:
+                    $ref: '#/components/schemas/Organization'
+        "400":
+          description: "No file provided"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "UPLOAD_NO_FILE"
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
 
-  /organizations/{id}/members:
-    get:
+  /organizations/{id}/logo:
+    delete:
       tags:
         - Organizations
-      summary: Lister les membres et invitations
+      summary: "Delete Organization Logo"
+      description: |
+        Remove the organization's logo/branding image.
+        Does not throw error if no logo exists.
+      operationId: deleteOrganizationLogo
+      security:
+        - bearerAuth: []
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema:
             type: string
+          description: Organization ID
       responses:
-        '200':
-          description: Liste récupérée
-          
-  /organizations/{id}/invite:
-    post:
-      tags:
-        - Organizations
-      summary: Inviter un nouveau membre
-      description: Envoie un email d'invitation. Vérifie que la limite 'maxMembers' n'est pas atteinte.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-            example:
-              email: "nouvel.employe@bambu-services.com"
-              name: "Jean Dupont"
-              role: "employee"
-              title: "Développeur"
-      responses:
-        '200':
-          description: Invitation envoyée
-        '403':
-          description: Limite de membres atteinte
+        "200":
+          description: "Logo deleted successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "LOGO_DELETED"
+        "404":
+          description: "Organization not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "ORG_NOT_FOUND"
+
+components:
+  schemas:
+    Organization:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        name:
+          type: string
+          example: "Bambu HQ"
+        legalName:
+          type: string
+          example: "Bambu Services SAS"
+        description:
+          type: string
+          example: "Système ERP Principal pour la gestion des services Bambu."
+        logo:
+          type: string
+          example: "http://localhost:3040/api/images/organizations/logo_abc123.jpg"
+        maxMembers:
+          type: number
+          example: 20
+        email:
+          type: string
+          example: "contact@bambu-services.com"
+        website:
+          type: string
+          example: "https://bambu-services.com"
+        phoneNumber:
+          type: object
+          properties:
+            country:
+              type: string
+              example: "FR"
+            number:
+              type: string
+              example: "+33 1 23 45 67 89"
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+              example: "128 Rue La Boétie"
+            city:
+              type: string
+              example: "Paris"
+            state:
+              type: string
+              example: "Île-de-France"
+            zipCode:
+              type: string
+              example: "75008"
+            country:
+              type: string
+              example: "France"
+        taxId:
+          type: string
+          example: "FR12345678901"
+        registrationNumber:
+          type: string
+          example: "123 456 789 00012"
+        socialLinks:
+          type: object
+          properties:
+            facebook:
+              type: string
+            twitter:
+              type: string
+            linkedin:
+              type: string
+            instagram:
+              type: string
+        timezone:
+          type: string
+          example: "Europe/Paris"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

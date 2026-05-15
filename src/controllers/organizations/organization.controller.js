@@ -1,3 +1,4 @@
+// src/controllers/organizations/organization.controller.js
 import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
 import User from "../../models/User.js";
