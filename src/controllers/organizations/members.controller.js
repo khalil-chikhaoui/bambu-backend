@@ -97,7 +97,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
     res.status(200).json({ message: "INVITATION_SENT" });
   } catch (err) {
-    console.error("Email Error:", err);
+    console.log("Email Error:", err);
     if (newInvitation) await Invitation.findByIdAndDelete(newInvitation._id);
     res.status(500);
     throw new Error("INVITATION_FAILED");

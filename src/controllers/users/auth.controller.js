@@ -69,48 +69,58 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const validateResetToken = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
+  let decoded;
+  
+  
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      res.status(404);
-      throw new Error("AUTH_USER_NOT_FOUND");
-    }
-    res.status(200).json({ message: "TOKEN_VALID" });
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
     res.status(400);
     throw new Error("AUTH_TOKEN_INVALID");
   }
+
+  
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    res.status(404);
+    throw new Error("AUTH_USER_NOT_FOUND");
+  }
+  
+  res.status(200).json({ message: "TOKEN_VALID" });
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
 
+  let decoded;
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).populate(
-      "memberships.organizationId",
-    );
-
-    if (!user) {
-      res.status(404);
-      throw new Error("AUTH_USER_NOT_FOUND");
-    }
-
-    user.password = password;
-    await user.save();
-
-    const sessionToken = generateToken(user._id);
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    res.status(200).json({
-      message: "PASSWORD_RESET_SUCCESS",
-      user: userResponse,
-      token: sessionToken,
-    });
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
     res.status(400);
     throw new Error("AUTH_TOKEN_INVALID");
   }
+
+  // 2. Do the database operations OUTSIDE the catch block
+  const user = await User.findById(decoded.id).populate(
+    "memberships.organizationId",
+  );
+
+  if (!user) {
+    res.status(404);
+    throw new Error("AUTH_USER_NOT_FOUND");
+  }
+
+  user.password = password;
+  await user.save();
+
+  const sessionToken = generateToken(user._id);
+  const userResponse = user.toObject();
+  delete userResponse.password;
+
+  res.status(200).json({
+    message: "PASSWORD_RESET_SUCCESS",
+    user: userResponse,
+    token: sessionToken,
+  });
 });

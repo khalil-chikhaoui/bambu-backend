@@ -32,7 +32,7 @@ export const connectDB = async (uri) => {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error(`❌ MongoDB Connection Error: ${e.message}`);
+    console.log(`❌ MongoDB Connection Error: ${e.message}`);
     throw e;
   }
 

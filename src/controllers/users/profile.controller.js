@@ -86,7 +86,7 @@ export const uploadUserAvatar = asyncHandler(async (req, res) => {
       const oldPath = path.join(storagePath, "users", oldFileName);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     } catch (err) {
-      console.error("Failed to delete old user avatar:", err.message);
+      console.log("Failed to delete old user avatar:", err.message);
     }
   }
 
@@ -122,7 +122,7 @@ export const deleteUserAvatar = asyncHandler(async (req, res) => {
         fs.unlinkSync(filePath);
       }
     } catch (error) {
-      console.error("Persistent File Delete Error:", error.message);
+      console.log("Persistent File Delete Error:", error.message);
     }
   }
 

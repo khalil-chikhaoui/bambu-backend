@@ -67,7 +67,7 @@ export const createContactMessage = asyncHandler(async (req, res) => {
         html: templates.admin.html,
       });
     } catch (error) {
-      console.error("❌ Background Email Task Failed:", error.message);
+      console.log("❌ Background Email Task Failed:", error.message);
     }
   })();
 });

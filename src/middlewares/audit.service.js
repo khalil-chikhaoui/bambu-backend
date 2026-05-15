@@ -27,6 +27,6 @@ export const logAudit = async ({
     });
   } catch (error) {
     // We catch the error so it doesn't block the main API response
-    console.error("❌ Failed to save AuditLog:", error.message);
+    console.log("❌ Failed to save AuditLog:", error.message);
   }
 };

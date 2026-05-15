@@ -47,7 +47,7 @@ export const protect = asyncHandler(async (req, res, next) => {
       // Retrieve user from database (excluding password field)
       req.user = await User.findById(decoded.id).select("-password");
     } catch (error) {
-      console.error("Token verification failed:", error.message);
+      console.log("Token verification failed:", error.message);
       res.status(401);
       throw new Error("Not authorized, token failed");
     }

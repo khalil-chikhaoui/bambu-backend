@@ -82,7 +82,7 @@ const startApp = async () => {
       console.log(`🚀 Server running on Port ${PORT}`);
     });
   } catch (err) {
-    console.error("❌ Failed to start server:", err.message);
+    console.log("❌ Failed to start server:", err.message);
     process.exit(1);
   }
 };
