@@ -45,22 +45,22 @@ export const protect = asyncHandler(async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Retrieve user from database (excluding password field)
-      // This attaches the user object to 'req.user' for use in subsequent controllers
       req.user = await User.findById(decoded.id).select("-password");
-
-      // Handle cases where token is valid but user was deleted from DB
-      if (!req.user) {
-        res.status(401);
-        throw new Error("Not authorized, user not found");
-      }
-
-      // Proceed to the next middleware or controller
-      next();
     } catch (error) {
       console.error("Token verification failed:", error.message);
       res.status(401);
       throw new Error("Not authorized, token failed");
     }
+
+    // 🐛 THE FIX: This is now OUTSIDE the catch block!
+    // Handle cases where token is valid but user was deleted from DB
+    if (!req.user) {
+      res.status(401);
+      throw new Error("Not authorized, user not found");
+    }
+
+    // Proceed to the next middleware or controller
+    return next();
   }
 
   // Error if no token was provided in the headers
