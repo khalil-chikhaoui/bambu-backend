@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 
 const ContactMessageSchema = new mongoose.Schema(
   {
-    subject: { 
-      type: String, 
-      required: true, 
-      trim: true 
+    subject: {
+      type: String,
+      required: true,
+      trim: true,
     },
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
@@ -14,9 +14,13 @@ const ContactMessageSchema = new mongoose.Schema(
     phone: { type: String, default: "" },
     wantsPhoneMeeting: { type: Boolean, default: false },
     language: { type: String, enum: ["en", "fr"], default: "en" },
-    status: { type: String, enum: ["new", "read", "replied", "archived"], default: "new" },
+    status: {
+      type: String,
+      enum: ["new", "read", "replied", "archived"],
+      default: "new",
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("ContactMessage", ContactMessageSchema);

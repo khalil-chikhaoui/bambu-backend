@@ -7,45 +7,45 @@ import mongoose from "mongoose";
 const organizationSchema = new mongoose.Schema(
   {
     // --- Identity & Branding ---
-    name: { 
-      type: String, 
+    name: {
+      type: String,
       required: true,
-      trim: true 
+      trim: true,
     },
-    legalName: { 
+    legalName: {
       type: String,
-      trim: true 
+      trim: true,
     },
-    description: { 
+    description: {
       type: String,
-      trim: true 
+      trim: true,
     },
-    logo: { 
+    logo: {
       type: String,
-      default: "" 
+      default: "",
     },
-    
+
     // --- System Limits ---
-    maxMembers: { 
-      type: Number, 
+    maxMembers: {
+      type: Number,
       required: true,
     },
 
     // --- Contact Information ---
-    email: { 
+    email: {
       type: String,
       lowercase: true,
-      trim: true
+      trim: true,
     },
-    
-    website: { 
+
+    website: {
       type: String,
-      trim: true 
+      trim: true,
     },
 
     phoneNumber: {
-      country: { type: String, default: "FR" }, // Default ISO Code 
-      number: { type: String, default: "" },    // e.g. "+33 6 00 00 00 00"
+      country: { type: String, default: "FR" }, // Default ISO Code
+      number: { type: String, default: "" },
     },
 
     // --- Geographic Location ---
@@ -58,10 +58,9 @@ const organizationSchema = new mongoose.Schema(
     },
 
     // --- Regulatory Information ---
-    taxId: { type: String, default: "" }, // e.g., Numéro de TVA intracommunautaire
-    registrationNumber: { type: String, default: "" }, // e.g., SIRET/SIREN
+    taxId: { type: String, default: "" },
+    registrationNumber: { type: String, default: "" },
 
-   
     // --- Online Presence ---
     socialLinks: {
       facebook: { type: String, default: "" },
@@ -70,12 +69,11 @@ const organizationSchema = new mongoose.Schema(
       instagram: { type: String, default: "" },
     },
 
-  
     timezone: { type: String, default: "Europe/Paris" },
   },
-  { 
-    timestamps: true 
-  }
+  {
+    timestamps: true,
+  },
 );
 
 const Organization = mongoose.model("Organization", organizationSchema);

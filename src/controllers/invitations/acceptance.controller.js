@@ -1,39 +1,9 @@
-/**
- * @fileoverview Invitation Controller
- * Manages the multi-step invitation acceptance process for Organizations.
- */
-
 import asyncHandler from "express-async-handler";
-import Invitation from "../models/Invitation.js";
-import User from "../models/User.js";
-import Organization from "../models/Organization.js";
-import { generateToken } from "../middlewares/auth.js";
-import { logAudit } from "../middlewares/audit.service.js"; // New polymorphic service
-
-export const validateInvitation = asyncHandler(async (req, res) => {
-  const { token } = req.params;
-
-  const invitation = await Invitation.findOne({ token }).populate(
-    "organizationId",
-    "name logo"
-  );
-
-  if (!invitation) {
-    res.status(404);
-    throw new Error("INVITATION_INVALID");
-  }
-
-  const userExists = await User.findOne({ email: invitation.email });
-
-  res.status(200).json({
-    isValid: true,
-    email: invitation.email,
-    name: invitation.name,
-    role: invitation.role,
-    organization: invitation.organizationId,
-    userExists: !!userExists,
-  });
-});
+import Invitation from "../../models/Invitation.js";
+import User from "../../models/User.js";
+import Organization from "../../models/Organization.js";
+import { generateToken } from "../../middlewares/auth.js";
+import { logAudit } from "../../middlewares/audit.service.js";
 
 export const acceptInviteLogin = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
@@ -51,7 +21,7 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
   }
 
   if (!(await user.matchPassword(password))) {
-    res.status(401);
+    res.status(400);
     throw new Error("AUTH_INVALID_CREDENTIALS");
   }
 
@@ -71,7 +41,7 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
   }
 
   const alreadyMember = user.memberships.some(
-    (m) => m.organizationId.toString() === invitation.organizationId.toString()
+    (m) => m.organizationId.toString() === invitation.organizationId.toString(),
   );
 
   if (!alreadyMember) {
@@ -92,7 +62,11 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
     action: "INVITE_ACCEPTED",
     targetModel: "User",
     targetId: user._id,
-    metadata: { role: invitation.role, targetEmail: user.email, targetName: user.name },
+    metadata: {
+      role: invitation.role,
+      targetEmail: user.email,
+      targetName: `${user.firstName} ${user.lastName}`,
+    },
   });
 
   await user.populate("memberships.organizationId");
@@ -108,7 +82,7 @@ export const acceptInviteLogin = asyncHandler(async (req, res) => {
 });
 
 export const acceptInviteRegister = asyncHandler(async (req, res) => {
-  const { token, password, name } = req.body;
+  const { token, password, firstName, lastName } = req.body;
 
   const invitation = await Invitation.findOne({ token });
   if (!invitation) {
@@ -138,7 +112,8 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
   }
 
   const newUser = await User.create({
-    name: name || invitation.name,
+    firstName: firstName || invitation.firstName,
+    lastName: lastName || invitation.lastName,
     email: invitation.email,
     password: password,
     memberships: [
@@ -159,7 +134,11 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
     action: "INVITE_ACCEPTED",
     targetModel: "User",
     targetId: newUser._id,
-    metadata: { role: invitation.role, targetEmail: newUser.email, targetName: newUser.name },
+    metadata: {
+      role: invitation.role,
+      targetEmail: newUser.email,
+      targetName: `${newUser.firstName} ${newUser.lastName}`,
+    },
   });
 
   if (newUser) {

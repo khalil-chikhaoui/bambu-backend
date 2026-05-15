@@ -22,7 +22,6 @@ import userRoutes from "./routes/users.routes.js";
 import invitationRoutes from "./routes/invitations.routes.js";
 import organizationRoutes from "./routes/organizations.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
-import bookingRoutes from "./routes/booking.routes.js";
 
 const app = express();
 
@@ -59,7 +58,6 @@ app.use("/api/users", userRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/inventory", inventoryRoutes);
-app.use("/api/bookings", bookingRoutes); 
 app.use("/api", generalRoutes); 
 
 

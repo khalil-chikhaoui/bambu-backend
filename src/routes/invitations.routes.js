@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { 
-  validateInvitation, 
-  acceptInviteLogin, 
-  acceptInviteRegister 
-} from "../controllers/invitations.controller.js";
+  validateInvitation,
+} from "../controllers/invitations/validation.controller.js";
+import {
+  acceptInviteLogin,
+  acceptInviteRegister,
+} from "../controllers/invitations/acceptance.controller.js";
 
 const router = Router();
 

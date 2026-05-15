@@ -1,12 +1,13 @@
 /**
  * @fileoverview Authentication Middlewares
- * Handles JWT generation and route protection by verifying tokens and 
+ * Handles JWT generation and route protection by verifying tokens and
  * attaching the user profile to the request object.
  */
 
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
+import rateLimit from "express-rate-limit";
 
 /**
  * Generates a JSON Web Token (JWT) for a given user ID.
@@ -17,7 +18,7 @@ import User from "../models/User.js";
 export const generateToken = (id, rememberMe = false) => {
   // 30 days if they want to stay connected, 2 hours if it's a temporary session
   const lifespan = rememberMe ? "30d" : "2h";
-  
+
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: lifespan,
   });
@@ -31,29 +32,29 @@ export const generateToken = (id, rememberMe = false) => {
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  // 1. Check for "Bearer <token>" in the Authorization header
+  // Check for "Bearer <token>" in the Authorization header
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
     try {
-      // 2. Extract token from string ("Bearer XYZ...")
+      // Extract token from string ("Bearer XYZ...")
       token = req.headers.authorization.split(" ")[1];
 
-      // 3. Verify token signature against secret
+      // Verify token signature against secret
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // 4. Retrieve user from database (excluding password field)
+      // Retrieve user from database (excluding password field)
       // This attaches the user object to 'req.user' for use in subsequent controllers
       req.user = await User.findById(decoded.id).select("-password");
 
-      // 5. Handle cases where token is valid but user was deleted from DB
+      // Handle cases where token is valid but user was deleted from DB
       if (!req.user) {
         res.status(401);
         throw new Error("Not authorized, user not found");
       }
 
-      // 6. Proceed to the next middleware or controller
+      // Proceed to the next middleware or controller
       next();
     } catch (error) {
       console.error("Token verification failed:", error.message);
@@ -62,9 +63,17 @@ export const protect = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // 7. Error if no token was provided in the headers
+  // Error if no token was provided in the headers
   if (!token) {
     res.status(401);
     throw new Error("Not authorized, no token");
   }
+});
+
+
+
+export const emailLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5, 
+  message: { message: "Trop de requêtes. Veuillez réessayer plus tard." },
 });

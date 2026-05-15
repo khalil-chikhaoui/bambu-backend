@@ -6,6 +6,11 @@ import path from "path";
 import User from "./src/models/User.js";
 import Organization from "./src/models/Organization.js";
 import Invitation from "./src/models/Invitation.js";
+import Item from "./src/models/Item.js";
+import StockMovement from "./src/models/StockMovement.js";
+import Resource from "./src/models/Resource.js";
+import Booking from "./src/models/Booking.js";
+import AuditLog from "./src/models/AuditLog.js";
 
 // Load Environment Variables
 const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
@@ -24,6 +29,11 @@ const seedDatabase = async () => {
     // 2. Wipe ALL existing data
     await Invitation.deleteMany({});
     await User.deleteMany({});
+    await Item.deleteMany({});
+    await StockMovement.deleteMany({});
+    await AuditLog.deleteMany({});
+    await Resource.deleteMany({});
+    await Booking.deleteMany({});
     await Organization.deleteMany({});
     console.log("🧹 Scrubbed the database clean.");
 
@@ -67,11 +77,11 @@ const seedDatabase = async () => {
     // 4A. Create Genesis Admin
     // ==========================================
     const adminUser = await User.create({
-      name: "Admin System",
+      firstName: "Admin",
+      lastName: "System",
       email: "admin@bambu-services.com",
       password: "password123", 
       profileImage: "https://ui-avatars.com/api/?name=Admin+System&background=184C16&color=fff",
-      // NOUVEAUX CHAMPS
       phoneNumber: { country: "FR", number: "+33 6 12 34 56 78" },
       address: {
         street: "10 Rue de la Paix",
@@ -99,11 +109,11 @@ const seedDatabase = async () => {
     // 4B. Create Khalil User
     // ==========================================
     const khalilUser = await User.create({
-      name: "Khalil Chikhaoui",
+      firstName: "Khalil",
+      lastName: "Chikhaoui",
       email: "chikhaouikhl@gmail.com",
       password: "21459708Az*", 
       profileImage: "https://ui-avatars.com/api/?name=Khalil+Chikhaoui&background=0ba5ec&color=fff",
-      // NOUVEAUX CHAMPS
       phoneNumber: { country: "TN", number: "+216 21 459 708" },
       address: {
         street: "Avenue Habib Bourguiba",
@@ -122,11 +132,13 @@ const seedDatabase = async () => {
     });
     console.log(`👨‍💻 User created: ${khalilUser.email}`);
 
-    console.log("🌱 Database seeded successfully with Phone & Addresses!");
+   console.log("🌱 Database seeded successfully!");
+    await mongoose.disconnect(); // Clean disconnection
     process.exit(0); 
   } catch (error) {
     console.error("❌ Error seeding database:", error.message);
-    process.exit(1); 
+    await mongoose.disconnect();
+    process.exit(1);
   }
 };
 

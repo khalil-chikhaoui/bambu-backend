@@ -1,12 +1,15 @@
 import express from "express";
 import { protect } from "../middlewares/auth.js";
 import { 
-  createItem, 
-  recordStockMovement, 
-  getItems, 
-  getItemById, 
-
-} from "../controllers/inventory.controller.js";
+  getItems,
+  getItemById,
+  createItem,
+  updateItem,
+} from "../controllers/inventory/items.controller.js";
+import {
+  recordStockMovement,
+  getInventoryLedger,
+} from "../controllers/inventory/stock.controller.js";
 
 const router = express.Router();
 
@@ -17,9 +20,9 @@ router.route("/items")
 
 // Route for specific item details
 router.route("/items/:id")
-  .get(protect, getItemById);
+  .get(protect, getItemById).put(protect, updateItem); 
 
-
+router.route("/history").get(protect, getInventoryLedger);
 
 // Route for ACID stock movements
 router.route("/movement")

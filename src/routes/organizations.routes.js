@@ -5,22 +5,29 @@ import {
   getOrganizationById,
   updateOrganization,
   deleteOrganization,
+} from "../controllers/organizations/organization.controller.js";
+import {
   uploadOrganizationLogo,
   deleteOrganizationLogo,
+} from "../controllers/organizations/branding.controller.js";
+import {
   inviteMember,
   getOrganizationMembers,
   updateMemberRole,
   removeMember,
   leaveOrganization,
+} from "../controllers/organizations/members.controller.js";
+import {
   getOrganizationHistory,
-} from "../controllers/organizations.controller.js";
+} from "../controllers/organizations/history.controller.js";
 import { uploadOrganizationLogo as logoUploadMiddleware } from "../config/localUpload.js";
 
 const router = Router();
 
 // ==========================================
-// --- All Organization Routes are Protected ---
+// --- Organization Routes  ---
 // ==========================================
+// ALL PROTECTED
 router.use(protect);
 
 // --- Core Organization Profile ---
@@ -30,7 +37,6 @@ router.route("/:id")
   .delete(deleteOrganization);
 
 // --- Logo Management ---
-// Expects form-data with a file field named 'logo'
 router.post("/:id/upload-logo", logoUploadMiddleware.single("file"), uploadOrganizationLogo);
 router.delete("/:id/logo", deleteOrganizationLogo);
 
@@ -38,7 +44,7 @@ router.delete("/:id/logo", deleteOrganizationLogo);
 router.route("/:id/members")
   .get(getOrganizationMembers);
 
-// ---  Members History ---
+// ---  History ---
 router.route("/:id/history")
   .get(getOrganizationHistory);
 

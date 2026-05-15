@@ -1,26 +1,22 @@
 import { Router } from "express";
-import { protect } from "../middlewares/auth.js";
+import { emailLimiter, protect } from "../middlewares/auth.js";
 import { 
-  deleteUserAvatar, 
-  forgotPassword, 
-  getProfile, 
-  resetPassword, 
-  signIn, 
+  signIn,
+  forgotPassword,
+  validateResetToken,
+  resetPassword,
+} from "../controllers/users/auth.controller.js";
+import {
+  getProfile,
   updateProfile,
   uploadUserAvatar,
-  validateResetToken, 
-} from "../controllers/users.controller.js";
-import rateLimit from "express-rate-limit";
+  deleteUserAvatar,
+} from "../controllers/users/profile.controller.js";
 import { uploadUserAvatar as avatarUploadMiddleware } from "../config/localUpload.js";
 
 const router = Router();
 
-// --- RATE LIMITERS ---
-const emailLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, 
-  message: { message: "Trop de requêtes. Veuillez réessayer plus tard." },
-});
+
 
 /**
  * Public Authentication Routes

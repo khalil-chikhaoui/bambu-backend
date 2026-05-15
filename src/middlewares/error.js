@@ -11,8 +11,8 @@
  * @param {import('express').NextFunction} next - Express next function
  */
 export function notFound(req, res, next) {
-  res.status(404).json({ 
-    message: `Route not found - [${req.method}] ${req.originalUrl}` 
+  res.status(404).json({
+    message: `Route not found - [${req.method}] ${req.originalUrl}`,
   });
 }
 
@@ -26,7 +26,7 @@ export function notFound(req, res, next) {
  * @param {import('express').NextFunction} next - Express next function
  */
 export function errorHandler(err, req, res, next) {
-  // Determine the status code: 
+  // Determine the status code:
   // If the response already has an error code, use it. Otherwise, default to 500.
   const status =
     res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;

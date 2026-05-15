@@ -24,16 +24,13 @@ const auditLogSchema = new mongoose.Schema(
         "PROJECTS", 
         "HR", 
         "FINANCE", 
-        "INVENTORY", 
-        "LOGISTICS",
-       
       ], 
       required: true,
       index: true,
     }, 
     action: {
       type: String,
-      required: true, // e.g., "INVITE_SENT", "ORG_ADDRESS_UPDATED"
+      required: true, // e.g., "INVITE_SENT", "ORG_ADDRESS_UPDATED"...
     },
     // Polymorphic association (What was affected?)
     targetModel: {
@@ -47,7 +44,7 @@ const auditLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed, 
       // ex: { targetEmail: "...", targetName: "...", role: "admin" }
     },
-    // Strict change tracking
+    // change tracking
     diff: {
       before: { type: mongoose.Schema.Types.Mixed },
       after: { type: mongoose.Schema.Types.Mixed },

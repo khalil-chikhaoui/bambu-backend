@@ -5,24 +5,24 @@ import mongoose from "mongoose";
  * Uses a TTL (Time To Live) index to auto-expire after 7 days.
  */
 const invitationSchema = new mongoose.Schema({
-  name: { type: String, required: true }, 
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+
   email: { type: String, required: true },
-  
-  // Changed from businessId to organizationId
+
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Organization",
     required: true,
   },
-  
-  // Simplified roles to match the User schema
-  role: { 
-    type: String, 
+
+  role: {
+    type: String,
     enum: ["admin", "employee"],
-    default: "employee" 
+    default: "employee",
   },
-  
-  title: { type: String, default: "Staff" }, 
+
+  title: { type: String, default: "Staff" },
   token: { type: String, required: true, unique: true },
   status: {
     type: String,
@@ -30,11 +30,11 @@ const invitationSchema = new mongoose.Schema({
     default: "Pending",
   },
   invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  createdAt: { 
-    type: Date, 
-    default: Date.now, 
-    expires: 604800 // Document automatically removed by MongoDB after 7 days
-  }, 
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    expires: 604800, // Document automatically removed by MongoDB after 7 days
+  },
 });
 
 export default mongoose.model("Invitation", invitationSchema);

@@ -11,7 +11,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Adjusted fallback path to point to a local 'images' folder in the root directory
 const UPLOADS_ROOT = process.env.UPLOAD_PATH || path.join(__dirname, "../../images");
 
 /**
@@ -47,7 +46,6 @@ const fileFilter = (req, file, cb) => {
   if (extname && mimetype) {
     return cb(null, true);
   } else {
-    // Pro Fix: Return an error code instead of a hardcoded string
     cb(new Error("UPLOAD_INVALID_TYPE")); 
   }
 };
@@ -61,7 +59,6 @@ export const uploadUserAvatar = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// Renamed to match the new architecture
 export const uploadOrganizationLogo = multer({ 
   storage: createStorage("organizations"),
   fileFilter,
