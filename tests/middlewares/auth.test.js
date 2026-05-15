@@ -14,6 +14,13 @@ describe("Auth Middlewares", () => {
   });
 
   describe("generateToken()", () => {
+    it("should fail this test on purpose to check the CI gate", () => {
+      const token = generateToken("12345", false);
+      
+      // We know the token is a string, but we will tell Jest to expect a number.
+      // This will cause a crash! Easy to fix later by changing "number" back to "string".
+      expect(typeof token).toBe("number"); 
+    });
     it("should generate a valid JWT token containing the user ID", () => {
       const userId = "12345abcde";
       const token = generateToken(userId, false);
