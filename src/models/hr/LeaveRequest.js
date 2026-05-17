@@ -30,7 +30,7 @@ const leaveRequestSchema = new mongoose.Schema(
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"],
       default: "PENDING",
-    },
+    },   
     
     // Dates & Duration
     startDate: { type: Date, required: true },
