@@ -7,6 +7,9 @@ client/node_modules/
 .env.local
 .env.production
 
+# Ignore local uploaded or asset images
+images/
+
 # Build outputs
 dist/
 client/dist/
