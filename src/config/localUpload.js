@@ -65,4 +65,31 @@ export const uploadOrganizationLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+
+// Accepte les images, mais surtout les PDF et documents Word
+const hrDocumentFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|webp|pdf|doc|docx/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  
+  // Les mimetypes pour Word/PDF peuvent être complexes, on vérifie les mots clés
+  const mimetype = /jpeg|jpg|png|webp|pdf|msword|officedocument/.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
+  } else {
+    cb(new Error("UPLOAD_INVALID_DOCUMENT_TYPE")); 
+  }
+};
+
+/**
+ * Configure HR Document Upload Middleware
+ * Utilise le dossier "hr" et permet des fichiers jusqu'à 10MB
+ */
+export const uploadHRDocument = multer({ 
+  storage: createStorage("hr"),
+  fileFilter: hrDocumentFilter,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB (les PDF scannés peuvent être lourds)
+});
+
+
 export const uploadMemory = multer({ storage: multer.memoryStorage() });

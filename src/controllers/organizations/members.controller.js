@@ -7,6 +7,7 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import { getTransporter } from "../../config/mail.js";
 import { logAudit } from "../../middlewares/audit.service.js";
+import EmployeeRecord from "../../models/hr/EmployeeRecord.js";
 
 const VALID_ROLES = ["admin", "employee"];
 
@@ -27,7 +28,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
   const pendingInvites = await Invitation.countDocuments({
     organizationId,
     status: "Pending",
-  });
+  }); 
 
   if (activeMembers + pendingInvites >= organization.maxMembers) {
     res.status(403);
@@ -319,4 +320,39 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ message: "LEFT_ORG", user });
+});
+
+
+// @desc    Get organization members who DO NOT have an HR employee record yet
+// @route   GET /api/organizations/:id/members-without-records
+// @access  Private (Admin/HR)
+export const getMembersWithoutEmployeeRecord = asyncHandler(async (req, res) => {
+  const organizationId = req.params.id;
+  const oId = new mongoose.Types.ObjectId(organizationId);
+
+  // 1. Get all active members of the organization
+  const users = await User.find({ "memberships.organizationId": oId })
+    .select("firstName lastName email profileImage");
+
+  // 2. Get all existing EmployeeRecord userIds for this specific organization
+  const existingRecords = await EmployeeRecord.find({ organizationId: oId })
+    .select("userId")
+    .lean();
+  
+  // Create a Set of strings for efficient lookup O(1)
+  const existingUserIds = new Set(existingRecords.map(rec => rec.userId.toString()));
+
+  // 3. Filter out users who already have an HR record
+  const availableMembers = users
+    .filter(user => !existingUserIds.has(user._id.toString()))
+    .map(user => ({
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email,
+      profileImage: user.profileImage,
+    }));
+
+  res.status(200).json(availableMembers);
 });

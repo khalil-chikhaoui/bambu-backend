@@ -18,13 +18,14 @@ const {
   getOrganizationMembers, 
   updateMemberRole, 
   removeMember, 
-  leaveOrganization 
+  leaveOrganization , getMembersWithoutEmployeeRecord
 } = await import('../../../src/controllers/organizations/members.controller.js');
 
 const { logAudit } = await import('../../../src/middlewares/audit.service.js');
 import User from '../../../src/models/User.js';
 import Organization from '../../../src/models/Organization.js';
 import Invitation from '../../../src/models/Invitation.js';
+import EmployeeRecord from '../../../src/models/hr/EmployeeRecord.js';
 
 const app = express();
 app.use(express.json());
@@ -40,6 +41,7 @@ app.get('/api/organizations/:id/members', getOrganizationMembers);
 app.put('/api/organizations/:id/members/:memberId', fakeAuth, updateMemberRole);
 app.delete('/api/organizations/:id/members/:memberId', fakeAuth, removeMember);
 app.post('/api/organizations/:id/leave', fakeAuth, leaveOrganization);
+app.get('/api/organizations/:id/members-without-records', fakeAuth, getMembersWithoutEmployeeRecord);
 
 app.use((err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
@@ -68,6 +70,7 @@ describe('Organization Members Controller Tests', () => {
     await User.deleteMany({});
     await Organization.deleteMany({});
     await Invitation.deleteMany({});
+    await EmployeeRecord.deleteMany({});
     jest.clearAllMocks();
   });
 
@@ -190,4 +193,59 @@ describe('Organization Members Controller Tests', () => {
         expect(response.body.message).toBe('LEFT_ORG');
     });
   });
+
+
+  // ---------------------------------------------------------
+  // GET MEMBERS WITHOUT EMPLOYEE RECORD
+  // ---------------------------------------------------------
+  describe('GET /members-without-records', () => {
+    it('should return only members who do NOT have an HR record', async () => {
+      // 1. Create two users in the organization
+      const user1 = await User.create({
+        firstName: 'John', lastName: 'Doe', email: 'john@bambu.com', password: 'p',
+        memberships: [{ organizationId: testOrg._id, role: 'employee' }]
+      });
+
+      const user2 = await User.create({
+        firstName: 'Jane', lastName: 'Smith', email: 'jane@bambu.com', password: 'p',
+        memberships: [{ organizationId: testOrg._id, role: 'employee' }]
+      });
+
+      // 2. Give ONLY user1 an EmployeeRecord
+      await EmployeeRecord.create({
+        organizationId: testOrg._id,
+        userId: user1._id
+      });
+
+      // 3. Make the request
+      const response = await request(app)
+        .get(`/api/organizations/${testOrg._id}/members-without-records`);
+
+      // 4. Assertions
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(1); // Should only return Jane
+      expect(response.body[0].id).toBe(user2._id.toString());
+      expect(response.body[0].email).toBe('jane@bambu.com');
+    });
+
+    it('should return an empty array if all members have HR records', async () => {
+      const user1 = await User.create({
+        firstName: 'John', lastName: 'Doe', email: 'john@bambu.com', password: 'p',
+        memberships: [{ organizationId: testOrg._id, role: 'employee' }]
+      });
+
+      // Give the user a record
+      await EmployeeRecord.create({
+        organizationId: testOrg._id,
+        userId: user1._id
+      });
+
+      const response = await request(app)
+        .get(`/api/organizations/${testOrg._id}/members-without-records`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]); // Nobody is left
+    });
+  });
+  
 });

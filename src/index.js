@@ -22,6 +22,7 @@ import userRoutes from "./routes/users.routes.js";
 import invitationRoutes from "./routes/invitations.routes.js";
 import organizationRoutes from "./routes/organizations.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
+import hrRoutes from "./routes/hr.routes.js";
 
 const app = express();
 
@@ -58,8 +59,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/inventory", inventoryRoutes);
-app.use("/api", generalRoutes); 
 
+
+app.use("/api/organizations/:orgId/hr", hrRoutes);
+
+
+app.use("/api", generalRoutes); 
 
 // --- Swagger ---
 const PORT = process.env.PORT || 3040;

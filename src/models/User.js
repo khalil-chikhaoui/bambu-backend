@@ -32,19 +32,6 @@ const UserSchema = new mongoose.Schema(
       default: "" 
     },
 
-    phoneNumber: {
-      country: { type: String, default: "FR" },
-      number: { type: String, default: "" },
-    },
-
-    address: {
-      street: { type: String, default: "" },
-      city: { type: String, default: "" },
-      state: { type: String, default: "" },
-      zipCode: { type: String, default: "" },
-      country: { type: String, default: "" },
-    },
-
     // --- Organization Memberships ---
     memberships: [
       {

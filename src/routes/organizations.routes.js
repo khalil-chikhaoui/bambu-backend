@@ -16,6 +16,7 @@ import {
   updateMemberRole,
   removeMember,
   leaveOrganization,
+  getMembersWithoutEmployeeRecord,
 } from "../controllers/organizations/members.controller.js";
 import {
   getOrganizationHistory,
@@ -44,6 +45,8 @@ router.delete("/:id/logo", deleteOrganizationLogo);
 router.route("/:id/members")
   .get(getOrganizationMembers);
 
+router.get("/:id/members-without-records", getMembersWithoutEmployeeRecord);
+
 // ---  History ---
 router.route("/:id/history")
   .get(getOrganizationHistory);
@@ -56,4 +59,4 @@ router.delete("/:id/members/:memberId", removeMember);
 // --- Personal Member Actions ---
 router.post("/:id/leave", leaveOrganization);
 
-export default router;
+export default router; 
