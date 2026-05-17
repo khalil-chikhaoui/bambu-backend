@@ -29,14 +29,6 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
   }
 
-  if (req.body.phoneNumber) {
-    user.phoneNumber = { ...user.phoneNumber, ...req.body.phoneNumber };
-  }
-
-  if (req.body.address) {
-    user.address = { ...user.address, ...req.body.address };
-  }
-
   const updatedUser = await user.save();
   await updatedUser.populate("memberships.organizationId");
 

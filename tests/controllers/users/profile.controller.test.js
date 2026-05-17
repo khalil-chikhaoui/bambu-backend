@@ -128,18 +128,18 @@ describe('Profile Controller Integration Tests', () => {
   // UPDATE PROFILE
   // ------------------------------------------
   describe('PUT /api/profile', () => {
-    it('should update basic info and nested objects (address)', async () => {
+    it('should update basic info (firstName, lastName)', async () => {
       const response = await request(app)
         .put('/api/profile')
         .send({
           firstName: 'Khalil Updated',
-          address: { city: 'Paris', country: 'France' }
+          lastName: 'Chikhaoui Updated'
         });
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('PROFILE_UPDATED');
       expect(response.body.user.firstName).toBe('Khalil Updated');
-      expect(response.body.user.address.city).toBe('Paris');
+      expect(response.body.user.lastName).toBe('Chikhaoui Updated');
     });
 
     it('should update membership title if organizationId is provided', async () => {
