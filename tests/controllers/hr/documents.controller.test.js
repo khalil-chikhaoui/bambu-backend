@@ -181,7 +181,8 @@ describe('HR Documents Controller Integration Tests', () => {
         actor: testUserId,
         module: 'HR',
         action: 'HR_DOCUMENT_UPLOADED',
-        targetModel: 'HRDocument'
+        targetModel: 'EmployeeRecord',
+        targetId: testEmployeeId.toString(),
       }));
     });
 
@@ -224,7 +225,8 @@ describe('HR Documents Controller Integration Tests', () => {
 
       expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
         action: 'HR_DOCUMENT_DELETED',
-        targetModel: 'HRDocument'
+        targetModel: 'EmployeeRecord',
+        targetId: testEmployeeId.toString(),
       }));
     });
 

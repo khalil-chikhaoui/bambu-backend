@@ -46,9 +46,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     organizationId: orgId,
     actor: req.user._id,
     module: "HR",
-    action: "HR_DOCUMENT_UPLOADED",
-    targetModel: "HRDocument",
-    targetId: newDoc._id,
+    action: "HR_DOCUMENT_UPLOADED", 
+    targetModel: "EmployeeRecord", // Tie it to the employee
+    targetId: employeeId,          // Tie it to the employee ID
+    metadata: { 
+      documentId: newDoc._id, 
+      documentTitle: title 
+    }
   });
 
   res.status(201).json(newDoc);
@@ -82,12 +86,17 @@ export const deleteDocument = asyncHandler(async (req, res) => {
 
   await document.deleteOne();
 
-  logAudit({
+ logAudit({
     organizationId: orgId,
     actor: req.user._id,
     module: "HR",
     action: "HR_DOCUMENT_DELETED",
-    targetModel: "HRDocument",
+    targetModel: "EmployeeRecord", // Tie it to the employee
+    targetId: employeeId,          // Tie it to the employee ID
+    metadata: { 
+      documentId: document._id, 
+      documentTitle: document.title // Save the title so we can display what was deleted!
+    }
   });
 
   res.status(200).json({ message: "DOCUMENT_DELETED" });
