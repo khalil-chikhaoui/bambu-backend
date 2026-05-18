@@ -47,8 +47,8 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     actor: req.user._id,
     module: "HR",
     action: "HR_DOCUMENT_UPLOADED", 
-    targetModel: "EmployeeRecord", // Tie it to the employee
-    targetId: employeeId,          // Tie it to the employee ID
+    targetModel: "EmployeeRecord", 
+    targetId: employeeId,          
     metadata: { 
       documentId: newDoc._id, 
       documentTitle: title 
@@ -91,11 +91,11 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     actor: req.user._id,
     module: "HR",
     action: "HR_DOCUMENT_DELETED",
-    targetModel: "EmployeeRecord", // Tie it to the employee
-    targetId: employeeId,          // Tie it to the employee ID
+    targetModel: "EmployeeRecord",
+    targetId: employeeId,          
     metadata: { 
       documentId: document._id, 
-      documentTitle: document.title // Save the title so we can display what was deleted!
+      documentTitle: document.title 
     }
   });
 

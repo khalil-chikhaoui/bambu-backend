@@ -12,9 +12,9 @@ export const getOrganizationHistory = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, module, targetId, action } = req.query;
   const skip = (page - 1) * limit;
 
-  // Base query for AuditLog
+  
   const query = { organizationId };
-  if (module) query.module = module;
+  if (module) query.module = module; 
   if (targetId) query.targetId = targetId;
   if (action) query.action = action;
 

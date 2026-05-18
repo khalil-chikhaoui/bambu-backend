@@ -94,7 +94,7 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     if (addressChanged) {
       organization.address = { ...organization.address, ...req.body.address };
     }
-  }
+  } 
 
   // Diff Social Links (Optional, if you want to track them precisely)
   if (req.body.socialLinks) {
@@ -102,12 +102,11 @@ export const updateOrganization = asyncHandler(async (req, res) => {
       ...organization.socialLinks,
       ...req.body.socialLinks,
     };
-    // You can add diff logic here similarly if needed
+   
   }
 
   const updatedOrganization = await organization.save();
 
-  // Log the precise Address changes
   if (addressChanged) {
     logAudit({
       organizationId: organization._id,
@@ -120,7 +119,6 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     });
   }
 
-  // Log the precise Profile changes
   if (profileChanged) {
     logAudit({
       organizationId: organization._id,
