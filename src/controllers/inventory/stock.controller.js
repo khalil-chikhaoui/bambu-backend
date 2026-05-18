@@ -59,7 +59,7 @@ export const getInventoryLedger = asyncHandler(async (req, res) => {
 
   const query = { organizationId };
   if (itemId) query.itemId = itemId;
-  if (action) query.type = action;
+  if (action) query.type = action; 
 
   if (search) {
     const searchRegex = new RegExp(search, "i");
@@ -77,7 +77,7 @@ export const getInventoryLedger = asyncHandler(async (req, res) => {
   const totalItems = await StockMovement.countDocuments(query);
 
   const history = await StockMovement.find(query)
-    .populate("actor", "name email")
+    .populate("actor", "firstName lastName email")
     .populate("itemId", "name sku category")
     .sort({ createdAt: -1 })
     .skip(skip)

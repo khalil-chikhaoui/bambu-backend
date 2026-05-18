@@ -54,8 +54,8 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   // Create Invitation
   const newInvitation = await Invitation.create({
-    firstName, // Fixed: Using correctly destructured variable
-    lastName, // Fixed: Using correctly destructured variable
+    firstName, 
+    lastName, 
     email,
     organizationId,
     role: assignedRole,
@@ -67,7 +67,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   const inviteFullName = `${firstName} ${lastName}`.trim();
 
-  // Log to Audit Ledger
   logAudit({
     organizationId,
     actor: req.user._id,
@@ -295,7 +294,7 @@ export const leaveOrganization = asyncHandler(async (req, res) => {
           role: "admin",
         },
       },
-    });
+    }); 
 
     if (otherAdmins === 0) {
       res.status(400);
@@ -330,19 +329,16 @@ export const getMembersWithoutEmployeeRecord = asyncHandler(async (req, res) => 
   const organizationId = req.params.id;
   const oId = new mongoose.Types.ObjectId(organizationId);
 
-  // 1. Get all active members of the organization
   const users = await User.find({ "memberships.organizationId": oId })
     .select("firstName lastName email profileImage");
 
-  // 2. Get all existing EmployeeRecord userIds for this specific organization
   const existingRecords = await EmployeeRecord.find({ organizationId: oId })
     .select("userId")
     .lean();
   
-  // Create a Set of strings for efficient lookup O(1)
   const existingUserIds = new Set(existingRecords.map(rec => rec.userId.toString()));
 
-  // 3. Filter out users who already have an HR record
+  // Filter out users who already have an HR record
   const availableMembers = users
     .filter(user => !existingUserIds.has(user._id.toString()))
     .map(user => ({

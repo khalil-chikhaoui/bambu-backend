@@ -85,15 +85,14 @@ export const updateEmployee = asyncHandler(async (req, res) => {
       let oldVal = originalData[field] || null;
       let newVal = req.body[field];
 
-      // --- CORRECTION 1 : Gérer la comparaison des Dates ---
+      // Gérer la comparaison des Dates ---
       if (field === 'birthDate') {
         const oldDate = oldVal ? new Date(oldVal).toISOString().split('T')[0] : null;
         const newDate = newVal ? new Date(newVal).toISOString().split('T')[0] : null;
         
         if (oldDate === newDate) {
-          // Si c'est le même jour, on met à jour silencieusement sans créer de log
           employee[field] = newVal;
-          return; // Passe au champ suivant dans le foreach
+          return; 
         }
       }
 
@@ -114,7 +113,6 @@ export const updateEmployee = asyncHandler(async (req, res) => {
 
   const updatedEmployee = await employee.save();
 
-  // On enregistre l'audit uniquement s'il y a de vrais changements
   if (Object.keys(diff.after).length > 0) {
     logAudit({
       organizationId: orgId,

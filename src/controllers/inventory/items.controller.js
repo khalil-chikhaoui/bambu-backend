@@ -99,7 +99,6 @@ export const updateItem = asyncHandler(async (req, res) => {
     hasChanges = true;
   }
 
-  // Handle General Info changes ONLY if values are different
   const fieldsToCheck = ["name", "category", "minThreshold"];
   fieldsToCheck.forEach((key) => {
     const newVal = req.body[key];
@@ -113,7 +112,6 @@ export const updateItem = asyncHandler(async (req, res) => {
 
   const updatedItem = await item.save();
 
-  // Log the precise changes to the Ledger
   if (hasChanges) {
     await StockMovement.create({
       organizationId: item.organizationId,
