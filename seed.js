@@ -34,86 +34,143 @@ const seedDatabase = async () => {
     console.log("🧹 Scrubbed the database clean.");
 
     // ==========================================
-    // 3A. Create Organization 1 (Bambu HQ)
+    // 3. Create Organizations (Fictional French ONGs)
     // ==========================================
-    const organization1 = await Organization.create({
-      name: "Bambu HQ",
-      legalName: "Bambu Services SAS",
-      description: "Système ERP Principal pour la gestion des services Bambu.",
-      logo: "https://res.cloudinary.com/dkh0hsbjg/image/upload/v1773570075/logo-beige_taidas.png", 
-      maxMembers: 20, 
-      email: "contact@bambu-services.com",
-      phoneNumber: { country: "FR", number: "+33 6 41 08 90 49" },
-      website: "https://bambu-services.com",
+
+    // Org 1: Solidarité Globale (Dummy)
+    const orgSolidarite = await Organization.create({
+      name: "Solidarité Globale",
+      legalName: "Solidarité Globale France",
+      description: "Organisation non gouvernementale fictive pour l'aide humanitaire et le développement.",
+      maxMembers: 100,
+      email: "contact@solidarite-globale.dummy.fr",
+      phoneNumber: { country: "FR", number: "+33 1 12 34 56 78" },
+      website: "https://www.solidarite-globale.dummy.fr",
       address: {
-        street: "128 Rue La Boétie", city: "Paris", state: "Île-de-France", zipCode: "75008", country: "France",
+        street: "12 Rue de la Paix",
+        city: "Paris",
+        state: "Île-de-France",
+        zipCode: "75002",
+        country: "France",
       },
-      taxId: "FR12345678901",
-      registrationNumber: "123 456 789 00012",
+      taxId: "FR11223344556",
+      registrationNumber: "112 233 445 00067",
       timezone: "Europe/Paris",
     });
 
-    // ==========================================
-    // 3B. Create Organization 2 (NovaTech)
-    // ==========================================
-    const organization2 = await Organization.create({
-      name: "NovaTech Solutions",
-      legalName: "NovaTech France SAS",
-      description: "Agence de développement digital et conseil IT.",
-      maxMembers: 50, 
-      email: "hello@novatech.fr",
-      phoneNumber: { country: "FR", number: "+33 1 23 45 67 89" },
+    // Org 2: Éco Espoir (Dummy)
+    const orgEcoEspoir = await Organization.create({
+      name: "Éco Espoir",
+      legalName: "Éco Espoir Initiative",
+      description: "Association fictive de protection de l'environnement et de développement durable.",
+      maxMembers: 80,
+      email: "hello@eco-espoir.dummy.fr",
+      phoneNumber: { country: "FR", number: "+33 4 98 76 54 32" },
+      website: "https://www.eco-espoir.dummy.fr",
       address: {
-        street: "15 Avenue des Champs-Élysées", city: "Paris", state: "Île-de-France", zipCode: "75008", country: "France",
+        street: "45 Avenue de la Liberté",
+        city: "Lyon",
+        state: "Auvergne-Rhône-Alpes",
+        zipCode: "69003",
+        country: "France",
       },
+      taxId: "FR99887766554",
+      registrationNumber: "998 877 665 00043",
       timezone: "Europe/Paris",
     });
 
-    // ==========================================
-    // 4A. Create Genesis Admin
-    // ==========================================
-    const adminUser = await User.create({
-      firstName: "Admin",
-      lastName: "System",
-      email: "admin@bambu-services.com",
-      password: "password123", 
-      profileImage: "https://ui-avatars.com/api/?name=Admin+System&background=184C16&color=fff",
-      memberships: [
-        {
-          organizationId: organization1._id,
-          role: "admin",
-          title: "Fondateur & CEO",
-        },
-        {
-          organizationId: organization2._id,
-          role: "admin",
-          title: "Superviseur Externe",
-        },
-      ],
+    // Org 3: Éducation Pour Tous (Dummy)
+    const orgEducation = await Organization.create({
+      name: "Éducation Pour Tous",
+      legalName: "Éducation Pour Tous ONG",
+      description: "Association fictive œuvrant pour l'accès à l'éducation dans les zones rurales.",
+      maxMembers: 150,
+      email: "contact@education-pourtous.dummy.fr",
+      phoneNumber: { country: "FR", number: "+33 4 11 22 33 44" },
+      website: "https://www.education-pourtous.dummy.fr",
+      address: {
+        street: "8 Boulevard des Écoles",
+        city: "Marseille",
+        state: "Provence-Alpes-Côte d'Azur",
+        zipCode: "13001",
+        country: "France",
+      },
+      taxId: "FR55443322110",
+      registrationNumber: "554 433 221 00019",
+      timezone: "Europe/Paris",
     });
-    console.log(`👨‍💻 Admin created: ${adminUser.email}`);
+
+    console.log("🏢 Created 3 dummy NGO organizations.");
 
     // ==========================================
-    // 4B. Create Khalil User
+    // 4. Create Users 
     // ==========================================
+
+    // User 1: Khalil Chikhaoui (Access to 3 Orgs)
     const khalilUser = await User.create({
       firstName: "Khalil",
       lastName: "Chikhaoui",
       email: "chikhaouikhl@gmail.com",
-      password: "21459708Az*", 
-      profileImage: "https://ui-avatars.com/api/?name=Khalil+Chikhaoui&background=0ba5ec&color=fff",
+      password: "21459708Az*",
       memberships: [
         {
-          organizationId: organization2._id,
+          organizationId: orgSolidarite._id,
           role: "admin",
           title: "Lead Developer",
         },
+        {
+          organizationId: orgEcoEspoir._id,
+          role: "admin",
+          title: "Consultant IT",
+        },
+        {
+          organizationId: orgEducation._id,
+          role: "admin",
+          title: "Bénévole Technique",
+        }
       ],
     });
-    console.log(`👨‍💻 User created: ${khalilUser.email}`);
+    console.log(`👨‍💻 User created with 3 orgs: ${khalilUser.email}`);
+
+    // User 2: Admin System (Access to 2 Orgs)
+    const adminUser = await User.create({
+      firstName: "Admin",
+      lastName: "System",
+      email: "admin@bambu-services.com",
+      password: "21459708Az*",
+      memberships: [
+        {
+          organizationId: orgSolidarite._id,
+          role: "admin",
+          title: "Superviseur",
+        },
+        {
+          organizationId: orgEcoEspoir._id,
+          role: "admin",
+          title: "Administrateur Réseau",
+        }
+      ],
+    });
+    console.log(`👨‍💻 User created with 2 orgs: ${adminUser.email}`);
+
+    // User 3: The "Other" / Contact (Access to 1 Org)
+    const contactUser = await User.create({
+      firstName: "Khaoula",
+      lastName: "Chikhaoui",
+      email: "contact@bambu-services.com",
+      password: "21459708Az*",
+      memberships: [
+        {
+          organizationId: orgSolidarite._id,
+          role: "admin",
+          title: "Fondatrice",
+        }
+      ],
+    });
+    console.log(`👨‍💻 User created with 1 org: ${contactUser.email}`);
 
     console.log("🌱 Database seeded successfully!");
-    await mongoose.disconnect(); // Clean disconnection
+    await mongoose.disconnect(); 
     process.exit(0); 
   } catch (error) {
     console.log("❌ Error seeding database:", error.message);

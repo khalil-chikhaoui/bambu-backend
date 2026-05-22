@@ -24,6 +24,7 @@ const auditLogSchema = new mongoose.Schema(
         "PROJECTS", 
         "HR", 
         "FINANCE", 
+        "RESERVATIONS"
       ], 
       required: true,
       index: true,
