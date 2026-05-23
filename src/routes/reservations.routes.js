@@ -8,7 +8,9 @@ import {
 import {
   createReservation,
   getReservations,
+  getReservationById,
   updateReservationStatus,
+  getPendingReservationsCount,
 } from "../controllers/reservations/reservations.controller.js";
 
 const router = express.Router();
@@ -25,8 +27,15 @@ router.route("/resources/:id")
 
 // --- Reservations ---
 router.route("/")
-  .get(getReservations) // Pass userId=? in query for "My Reservations"
+  .get(getReservations) 
   .post(createReservation);
+
+router.route("/pending-count")
+  .get(getPendingReservationsCount);
+
+// --- Single Reservation Routes ---
+router.route("/:id")
+  .get(getReservationById);
 
 router.route("/:id/status")
   .patch(updateReservationStatus);
