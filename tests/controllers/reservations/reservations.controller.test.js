@@ -12,7 +12,9 @@ jest.unstable_mockModule('../../../src/middlewares/audit.service.js', () => ({
 const {
   createReservation,
   getReservations,
-  updateReservationStatus
+  getReservationById,
+  updateReservationStatus,
+  getPendingReservationsCount
 } = await import('../../../src/controllers/reservations/reservations.controller.js');
 const { logAudit } = await import('../../../src/middlewares/audit.service.js');
 
@@ -32,6 +34,8 @@ const fakeAuth = (req, res, next) => {
 
 app.post('/api/reservations', fakeAuth, createReservation);
 app.get('/api/reservations', getReservations);
+app.get('/api/reservations/pending-count', getPendingReservationsCount); 
+app.get('/api/reservations/:id', getReservationById);
 app.patch('/api/reservations/:id/status', fakeAuth, updateReservationStatus);
 
 app.use((err, req, res, next) => {
@@ -90,12 +94,12 @@ describe('Reservations Controller Tests', () => {
       expect(logAudit).toHaveBeenCalledTimes(1);
       expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
         action: 'RESERVATION_REQUESTED',
-        targetModel: 'Reservation'
+        targetModel: 'Reservation',
+        metadata: expect.objectContaining({ resourceName: 'Main Conference Room' })
       }));
     });
 
     it('should block creation if dates overlap with an APPROVED reservation', async () => {
-      // Seed existing reservation (10:00 AM to 12:00 PM)
       await Reservation.create({
         organizationId: testOrgId,
         resourceId: testResource._id,
@@ -106,7 +110,6 @@ describe('Reservations Controller Tests', () => {
         purpose: 'Existing Meeting'
       });
 
-      // Try booking 11:00 AM to 1:00 PM (Overlaps!)
       const response = await request(app).post('/api/reservations').send({
         organizationId: testOrgId,
         resourceId: testResource._id,
@@ -133,16 +136,16 @@ describe('Reservations Controller Tests', () => {
       const response = await request(app).post('/api/reservations').send({
         organizationId: testOrgId,
         resourceId: testResource._id,
-        startTime: new Date('2026-10-10T10:00:00Z'), // Exact same time
+        startTime: new Date('2026-10-10T10:00:00Z'),
         endTime: new Date('2026-10-10T12:00:00Z'),
         purpose: 'New Meeting'
       });
 
-      expect(response.status).toBe(201); // Should pass
+      expect(response.status).toBe(201); 
     });
   });
 
-// ---------------------------------------------------------
+  // ---------------------------------------------------------
   // GET RESERVATIONS & FILTERS
   // ---------------------------------------------------------
   describe('GET /api/reservations', () => {
@@ -151,13 +154,11 @@ describe('Reservations Controller Tests', () => {
     beforeEach(async () => {
       user2Id = new mongoose.Types.ObjectId();
 
-      // 1. Create the actual users in the DB so .populate() doesn't return null
       await User.create([
         { _id: testUserId, firstName: 'User', lastName: 'One', email: 'u1@b.com', password: 'p' },
         { _id: user2Id, firstName: 'User', lastName: 'Two', email: 'u2@b.com', password: 'p' }
       ]);
 
-      // 2. Create the reservations
       await Reservation.create([
         {
           organizationId: testOrgId, resourceId: testResource._id, userId: testUserId,
@@ -190,7 +191,6 @@ describe('Reservations Controller Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body.data).toHaveLength(1);
       
-      // Because it is populated, userId is an object. We check its _id property.
       expect(response.body.data[0].userId._id).toBe(user2Id.toString());
     });
 
@@ -199,12 +199,46 @@ describe('Reservations Controller Tests', () => {
         .get('/api/reservations')
         .query({ 
           organizationId: testOrgId.toString(), 
-          startDate: '2026-05-15T00:00:00Z' // Should only catch the June meeting
+          startDate: '2026-05-15T00:00:00Z' 
         });
 
       expect(response.status).toBe(200);
       expect(response.body.data).toHaveLength(1);
       expect(response.body.data[0].status).toBe('APPROVED');
+    });
+  });
+
+  // ---------------------------------------------------------
+  // GET SINGLE RESERVATION BY ID
+  // ---------------------------------------------------------
+  describe('GET /api/reservations/:id', () => {
+    it('should get a single reservation by ID with populated fields', async () => {
+      await User.create({ _id: testUserId, firstName: 'Test', lastName: 'User', email: 'test@b.com', password: 'p' });
+      
+      const reservation = await Reservation.create({
+        organizationId: testOrgId,
+        resourceId: testResource._id,
+        userId: testUserId,
+        startTime: new Date('2026-10-10T10:00:00Z'),
+        endTime: new Date('2026-10-10T12:00:00Z'),
+        status: 'PENDING',
+        purpose: 'Test Fetch'
+      });
+
+      const response = await request(app).get(`/api/reservations/${reservation._id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.purpose).toBe('Test Fetch');
+      expect(response.body.resourceId.name).toBe('Main Conference Room');
+      expect(response.body.userId.firstName).toBe('Test');
+    });
+
+    it('should return 404 if reservation does not exist', async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      const response = await request(app).get(`/api/reservations/${fakeId}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe('RESERVATION_NOT_FOUND');
     });
   });
 
@@ -238,7 +272,6 @@ describe('Reservations Controller Tests', () => {
       expect(response.body.status).toBe('REJECTED');
       expect(response.body.adminNotes).toBe('Room is undergoing maintenance');
 
-      // Verify Audit Log captured the exact status change
       expect(logAudit).toHaveBeenCalledTimes(1);
       expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
         action: 'RESERVATION_REJECTED',
@@ -246,8 +279,34 @@ describe('Reservations Controller Tests', () => {
           before: { status: 'PENDING' },
           after: { status: 'REJECTED' }
         }),
-        metadata: { adminNotes: 'Room is undergoing maintenance' }
+        metadata: { 
+          adminNotes: 'Room is undergoing maintenance',
+          resourceName: 'Main Conference Room'
+        }
       }));
     });
   });
+
+
+  // ---------------------------------------------------------
+  // GET PENDING COUNT
+  // ---------------------------------------------------------
+  describe('GET /api/reservations/pending-count', () => {
+    it('should return the correct count of pending reservations', async () => {
+      // Create 2 PENDING and 1 APPROVED
+      await Reservation.create([
+        { organizationId: testOrgId, resourceId: testResource._id, userId: testUserId, startTime: new Date(), endTime: new Date(), status: 'PENDING', purpose: '1' },
+        { organizationId: testOrgId, resourceId: testResource._id, userId: testUserId, startTime: new Date(), endTime: new Date(), status: 'PENDING', purpose: '2' },
+        { organizationId: testOrgId, resourceId: testResource._id, userId: testUserId, startTime: new Date(), endTime: new Date(), status: 'APPROVED', purpose: '3' }
+      ]);
+
+      const response = await request(app)
+        .get('/api/reservations/pending-count')
+        .query({ organizationId: testOrgId.toString() });
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(2); // Should only count the 2 PENDING
+    });
+  });
+
 });
