@@ -26,10 +26,21 @@ export const createReservation = asyncHandler(async (req, res) => {
     throw new Error("RESOURCE_ALREADY_BOOKED_FOR_THESE_DATES");
   }
 
+  const count = await Reservation.countDocuments({ organizationId });
+  const today = new Date();
+  const dateStr =
+    today.getFullYear().toString() +
+    (today.getMonth() + 1).toString().padStart(2, "0") +
+    today.getDate().toString().padStart(2, "0");
+
+  // Generate the refCode
+  const refCode = `RES-${dateStr}-${(count + 1).toString().padStart(4, "0")}`;
+
   const reservation = await Reservation.create({
     organizationId,
     resourceId,
     userId: req.user._id,
+    refCode,
     startTime,
     endTime,
     purpose,
@@ -42,9 +53,9 @@ export const createReservation = asyncHandler(async (req, res) => {
     action: "RESERVATION_REQUESTED",
     targetModel: "Reservation",
     targetId: reservation._id,
-    metadata: { 
-      resourceName: resource.name 
-    }
+    metadata: {
+      resourceName: resource.name,
+    },
   });
 
   res.status(201).json(reservation);
@@ -55,12 +66,21 @@ export const createReservation = asyncHandler(async (req, res) => {
  * @route   GET /api/reservations
  */
 export const getReservations = asyncHandler(async (req, res) => {
-  const { organizationId, page = 1, limit = 10, resourceId, userId, status, startDate, endDate } = req.query;
+  const {
+    organizationId,
+    page = 1,
+    limit = 10,
+    resourceId,
+    userId,
+    status,
+    startDate,
+    endDate,
+  } = req.query;
   const skip = (page - 1) * limit;
 
   const query = { organizationId };
   if (resourceId) query.resourceId = resourceId;
-  if (userId) query.userId = userId; 
+  if (userId) query.userId = userId;
   if (status) query.status = status;
 
   if (startDate || endDate) {
@@ -111,7 +131,9 @@ export const getReservationById = asyncHandler(async (req, res) => {
  */
 export const updateReservationStatus = asyncHandler(async (req, res) => {
   const { status, adminNotes } = req.body;
-  const reservation = await Reservation.findById(req.params.id).populate("resourceId");
+  const reservation = await Reservation.findById(req.params.id).populate(
+    "resourceId",
+  );
 
   if (!reservation) {
     res.status(404);
@@ -132,15 +154,14 @@ export const updateReservationStatus = asyncHandler(async (req, res) => {
     targetModel: "Reservation",
     targetId: reservation._id,
     diff: { before: { status: oldStatus }, after: { status } },
-    metadata: { 
-      adminNotes, 
-      resourceName: reservation.resourceId.name 
+    metadata: {
+      adminNotes,
+      resourceName: reservation.resourceId.name,
     },
   });
 
   res.json(reservation);
 });
-
 
 /**
  * @desc    Get the count of pending reservations
@@ -156,7 +177,7 @@ export const getPendingReservationsCount = asyncHandler(async (req, res) => {
 
   const count = await Reservation.countDocuments({
     organizationId,
-    status: "PENDING"
+    status: "PENDING",
   });
 
   res.json({ count });
