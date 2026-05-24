@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const reservationSchema = new mongoose.Schema(
   {
+    refCode: { type: String, unique: true },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",

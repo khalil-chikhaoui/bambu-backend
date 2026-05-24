@@ -4,13 +4,13 @@
 
 import dotenv from "dotenv";
 import express from "express";
+import cors from "cors";
+import path from "path";
 const envFile =
   process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 
 
-import cors from "cors";
-import path from "path";
 // Configs & Middlewares
 import { connectDB } from "./config/db.js";
 import { notFound, errorHandler } from "./middlewares/error.js";
@@ -19,7 +19,7 @@ import { swaggerDocs } from "./config/swagger.js";
 
 
 // Routes
-import generalRoutes from "./routes/general.routes.js"; 
+import generalRoutes from "./routes/general.routes.js";
 import userRoutes from "./routes/users.routes.js";
 import invitationRoutes from "./routes/invitations.routes.js";
 import organizationRoutes from "./routes/organizations.routes.js";
