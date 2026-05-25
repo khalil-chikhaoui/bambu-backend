@@ -65,6 +65,12 @@ export const uploadOrganizationLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+export const uploadTeamLogo = multer({ 
+  storage: createStorage("teams"),
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
 
 // Accepte les images, mais surtout les PDF et documents Word
 const hrDocumentFilter = (req, file, cb) => {
