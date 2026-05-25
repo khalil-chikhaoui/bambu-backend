@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler";
 import EmployeeRecord from "../../models/hr/EmployeeRecord.js";
 import User from "../../models/User.js";
-import { logAudit } from "../../middlewares/audit.service.js"; 
+import { logAudit } from "../../middlewares/audit.service.js";
 
 export const getEmployees = asyncHandler(async (req, res) => {
   const { orgId } = req.params;
@@ -14,10 +14,10 @@ export const getEmployees = asyncHandler(async (req, res) => {
 
 export const getEmployeeById = asyncHandler(async (req, res) => {
   const { orgId, employeeId } = req.params;
-  
-  const employee = await EmployeeRecord.findOne({ 
-    _id: employeeId, 
-    organizationId: orgId 
+
+  const employee = await EmployeeRecord.findOne({
+    _id: employeeId,
+    organizationId: orgId,
   }).populate("userId", "firstName lastName email profileImage");
 
   if (!employee) {
@@ -32,13 +32,19 @@ export const createEmployee = asyncHandler(async (req, res) => {
   const { orgId } = req.params;
   const { userId, ...recordData } = req.body;
 
-  const user = await User.findOne({ _id: userId, "memberships.organizationId": orgId });
+  const user = await User.findOne({
+    _id: userId,
+    "memberships.organizationId": orgId,
+  });
   if (!user) {
     res.status(400);
     throw new Error("USER_NOT_IN_ORGANIZATION");
   }
 
-  const existingRecord = await EmployeeRecord.findOne({ userId, organizationId: orgId });
+  const existingRecord = await EmployeeRecord.findOne({
+    userId,
+    organizationId: orgId,
+  });
   if (existingRecord) {
     res.status(400);
     throw new Error("EMPLOYEE_RECORD_ALREADY_EXISTS");
@@ -47,7 +53,7 @@ export const createEmployee = asyncHandler(async (req, res) => {
   const newEmployee = await EmployeeRecord.create({
     userId,
     organizationId: orgId,
-    ...recordData
+    ...recordData,
   });
 
   logAudit({
@@ -65,7 +71,10 @@ export const createEmployee = asyncHandler(async (req, res) => {
 export const updateEmployee = asyncHandler(async (req, res) => {
   const { orgId, employeeId } = req.params;
 
-  const employee = await EmployeeRecord.findOne({ _id: employeeId, organizationId: orgId });
+  const employee = await EmployeeRecord.findOne({
+    _id: employeeId,
+    organizationId: orgId,
+  });
   if (!employee) {
     res.status(404);
     throw new Error("EMPLOYEE_RECORD_NOT_FOUND");
@@ -75,32 +84,47 @@ export const updateEmployee = asyncHandler(async (req, res) => {
   const diff = { before: {}, after: {} };
 
   const updatableFields = [
-    "socialSecurityNumber", "birthDate", "birthPlace", "nationality", 
-    "emergencyContact", "bankDetails", "personalContact", "address", 
-    "familySituation", "workAuthorization"
+    "socialSecurityNumber",
+    "birthDate",
+    "birthPlace",
+    "nationality",
+    "emergencyContact",
+    "bankDetails",
+    "personalContact",
+    "address",
+    "familySituation",
+    "workAuthorization",
   ];
-  
+
   updatableFields.forEach((field) => {
     if (req.body[field] !== undefined) {
       let oldVal = originalData[field] || null;
       let newVal = req.body[field];
 
       // Gérer la comparaison des Dates ---
-      if (field === 'birthDate') {
-        const oldDate = oldVal ? new Date(oldVal).toISOString().split('T')[0] : null;
-        const newDate = newVal ? new Date(newVal).toISOString().split('T')[0] : null;
-        
+      if (field === "birthDate") {
+        const oldDate = oldVal
+          ? new Date(oldVal).toISOString().split("T")[0]
+          : null;
+        const newDate = newVal
+          ? new Date(newVal).toISOString().split("T")[0]
+          : null;
+
         if (oldDate === newDate) {
           employee[field] = newVal;
-          return; 
+          return;
         }
       }
 
       // Merge pour les objets imbriqués
-      if (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal)) {
+      if (
+        typeof newVal === "object" &&
+        newVal !== null &&
+        !Array.isArray(newVal)
+      ) {
         newVal = { ...(originalData[field] || {}), ...req.body[field] };
       }
-      
+
       employee[field] = newVal;
 
       // Seulement si les données sont VRAIMENT différentes
@@ -121,7 +145,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
       action: "EMPLOYEE_RECORD_UPDATED",
       targetModel: "EmployeeRecord",
       targetId: employee._id,
-      diff: diff 
+      diff: diff,
     });
   }
 
@@ -134,7 +158,7 @@ export const updateAssurances = asyncHandler(async (req, res) => {
   const employee = await EmployeeRecord.findOneAndUpdate(
     { _id: employeeId, organizationId: orgId },
     { assurances: req.body },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
 
   if (!employee) {
