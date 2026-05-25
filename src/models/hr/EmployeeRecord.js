@@ -16,18 +16,18 @@ const employeeRecordSchema = new mongoose.Schema(
     },
     // Identité Légale
     socialSecurityNumber: {
-      type: String, 
+      type: String,
       trim: true,
     },
     birthDate: { type: Date },
     birthPlace: { type: String },
-    nationality: { type: String, default: "Française" },
+    nationality: { type: String },
 
     emergencyContact: {
       name: { type: String },
       relationship: { type: String },
       // FIXED: emergency contact phone is now an object
-      phoneNumber: { 
+      phoneNumber: {
         country: { type: String, default: "FR" },
         number: { type: String, default: "" },
       },
@@ -65,7 +65,7 @@ const employeeRecordSchema = new mongoose.Schema(
       },
     },
 
-    // Adresse 
+    // Adresse
     address: {
       street: { type: String },
       city: { type: String },
@@ -73,26 +73,26 @@ const employeeRecordSchema = new mongoose.Schema(
       country: { type: String, default: "" },
     },
 
-    // Situation Familiale 
+    // Situation Familiale
     familySituation: {
       maritalStatus: {
         type: String,
         enum: ["CELIBATAIRE", "MARIE", "PACS", "DIVORCE", "VEUF"],
       },
-      dependentsCount: { type: Number, default: 0 }, 
+      dependentsCount: { type: Number, default: 0 },
     },
 
-    // Autorisation de travail 
+    // Autorisation de travail
     workAuthorization: {
-      hasWorkPermit: { type: Boolean, default: true }, 
-      documentType: { type: String }, 
+      hasWorkPermit: { type: Boolean, default: true },
+      documentType: { type: String },
       expirationDate: { type: Date },
     },
 
-    // Soldes actuels 
+    // Soldes actuels
     leaveBalances: {
-      cpBalance: { type: Number, default: 0 }, 
-      rttBalance: { type: Number, default: 0 }, 
+      cpBalance: { type: Number, default: 0 },
+      rttBalance: { type: Number, default: 0 },
     },
   },
   { timestamps: true },

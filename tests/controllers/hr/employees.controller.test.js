@@ -103,17 +103,36 @@ describe('HR Employees Controller Tests', () => {
   // CREATE EMPLOYEE
   // ---------------------------------------------------------
   describe('POST /employees', () => {
-    it('should successfully create an employee record and log audit', async () => {
+    it('should successfully create an employee record with all fields and log audit', async () => {
       const response = await request(app)
         .post(`/api/organizations/${testOrgId}/employees`)
         .send({
           userId: linkedUserId,
           socialSecurityNumber: '123456789',
-          nationality: 'French'
+          nationality: 'French',
+          birthPlace: 'Paris',
+          familySituation: {
+            maritalStatus: 'CELIBATAIRE',
+            dependentsCount: 0
+          },
+          address: {
+            street: '123 Rue de Rivoli',
+            city: 'Paris',
+            zipCode: '75001',
+            country: 'France'
+          },
+          bankDetails: {
+            iban: 'FR76123',
+            bic: 'TESTBIC',
+            bankName: 'Test Bank'
+          }
         });
 
       expect(response.status).toBe(201);
       expect(response.body.socialSecurityNumber).toBe('123456789');
+      expect(response.body.birthPlace).toBe('Paris');
+      expect(response.body.address.city).toBe('Paris');
+      expect(response.body.bankDetails.iban).toBe('FR76123');
       expect(response.body.organizationId).toBe(testOrgId.toString());
       expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
         action: 'EMPLOYEE_RECORD_CREATED',
