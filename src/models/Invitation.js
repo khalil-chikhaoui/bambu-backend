@@ -5,9 +5,6 @@ import mongoose from "mongoose";
  * Uses a TTL (Time To Live) index to auto-expire after 7 days.
  */
 const invitationSchema = new mongoose.Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-
   email: { type: String, required: true },
 
   organizationId: {
