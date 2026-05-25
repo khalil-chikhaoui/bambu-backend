@@ -68,6 +68,51 @@ export const createEmployee = asyncHandler(async (req, res) => {
   res.status(201).json(newEmployee);
 });
 
+function isEmptyValue(val) {
+  if (val === null || val === undefined || val === "") return true;
+  if (typeof val === "object") {
+    // If it's a phone-like object
+    if ("number" in val && isEmptyValue(val.number)) {
+      return true;
+    }
+    // If it's a generic object, check if all values are empty
+    const entries = Object.entries(val).filter(([k]) => k !== "_id");
+    if (entries.length === 0) return true;
+    return entries.every(([_, v]) => isEmptyValue(v));
+  }
+  return false;
+}
+
+function areValuesEqual(val1, val2) {
+  if (isEmptyValue(val1) && isEmptyValue(val2)) return true;
+  if (isEmptyValue(val1) !== isEmptyValue(val2)) return false;
+
+  // Primitives
+  if (typeof val1 !== "object" || val1 === null || typeof val2 !== "object" || val2 === null) {
+    return String(val1) === String(val2);
+  }
+
+  // Dates
+  if (val1 instanceof Date || val2 instanceof Date || (typeof val1 === "string" && val1.match(/^\d{4}-\d{2}-\d{2}/)) || (typeof val2 === "string" && val2.match(/^\d{4}-\d{2}-\d{2}/))) {
+    const d1 = val1 ? new Date(val1).getTime() : null;
+    const d2 = val2 ? new Date(val2).getTime() : null;
+    return d1 === d2;
+  }
+
+  // Objects
+  const keys1 = Object.keys(val1).filter(k => k !== "_id");
+  const keys2 = Object.keys(val2).filter(k => k !== "_id");
+  const allKeys = new Set([...keys1, ...keys2]);
+
+  for (const key of allKeys) {
+    if (!areValuesEqual(val1[key], val2[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export const updateEmployee = asyncHandler(async (req, res) => {
   const { orgId, employeeId } = req.params;
 
@@ -128,7 +173,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
       employee[field] = newVal;
 
       // Seulement si les données sont VRAIMENT différentes
-      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      if (!areValuesEqual(oldVal, newVal)) {
         diff.before[field] = oldVal;
         diff.after[field] = newVal;
       }
