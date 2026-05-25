@@ -113,8 +113,8 @@ export const acceptInviteRegister = asyncHandler(async (req, res) => {
   }
 
   const newUser = await User.create({
-    firstName: firstName || invitation.firstName,
-    lastName: lastName || invitation.lastName,
+    firstName,
+    lastName,
     email: invitation.email,
     password: password,
     memberships: [

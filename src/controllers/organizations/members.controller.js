@@ -12,7 +12,7 @@ import EmployeeRecord from "../../models/hr/EmployeeRecord.js";
 const VALID_ROLES = ["admin", "employee"];
 
 export const inviteMember = asyncHandler(async (req, res) => {
-  const { email, firstName, lastName, role, title } = req.body;
+  const { email, role, title } = req.body;
   const organizationId = req.params.id;
 
   const organization = await Organization.findById(organizationId);
@@ -54,8 +54,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   // Create Invitation
   const newInvitation = await Invitation.create({
-    firstName, 
-    lastName, 
     email,
     organizationId,
     role: assignedRole,
@@ -64,8 +62,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
     invitedBy: req.user._id,
     status: "Pending",
   });
-
-  const inviteFullName = `${firstName} ${lastName}`.trim();
 
   logAudit({
     organizationId,
@@ -77,9 +73,11 @@ export const inviteMember = asyncHandler(async (req, res) => {
     metadata: {
       targetEmail: email,
       role: assignedRole,
-      targetName: inviteFullName,
+      targetName: email,
     },
   });
+
+  const greeting = existingUser ? `Bonjour ${existingUser.firstName} !` : "Bonjour !";
 
   try {
     const transporter = getTransporter();
@@ -90,7 +88,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
       subject: `Invitation à rejoindre ${organization.name}`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 12px;">
-          <h2 style="color: #184c16;">Bonjour ${firstName}!</h2>
+          <h2 style="color: #184c16;">${greeting}</h2>
           <p>Vous avez été invité(e) à rejoindre <strong>${organization.name}</strong>.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${inviteUrl}" style="background: #184c16; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Accepter l'invitation</a>
@@ -127,11 +125,7 @@ export const getOrganizationMembers = asyncHandler(async (req, res) => {
       { lastName: searchRegex },
       { email: searchRegex },
     ];
-    inviteQuery.$or = [
-      { firstName: searchRegex },
-      { lastName: searchRegex },
-      { email: searchRegex },
-    ];
+    inviteQuery.email = searchRegex;
   }
 
   const [users, invitations] = await Promise.all([
@@ -160,11 +154,7 @@ export const getOrganizationMembers = asyncHandler(async (req, res) => {
 
   const pendingInvites = invitations.map((invite) => ({
     id: invite._id,
-    firstName: invite.firstName,
-    lastName: invite.lastName,
-    name:
-      `${invite.firstName} ${invite.lastName}`.trim() ||
-      invite.email.split("@")[0],
+    name: invite.email.split("@")[0],
     email: invite.email,
     profileImage: "",
     role: invite.role,
@@ -238,7 +228,7 @@ export const removeMember = asyncHandler(async (req, res) => {
       targetId: memberId,
       metadata: {
         targetEmail: invitation.email,
-        targetName: `${invitation.firstName} ${invitation.lastName}`.trim(),
+        targetName: invitation.email,
       },
     });
 

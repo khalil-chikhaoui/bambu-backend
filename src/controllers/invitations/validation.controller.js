@@ -21,8 +21,6 @@ export const validateInvitation = asyncHandler(async (req, res) => {
   res.status(200).json({
     isValid: true,
     email: invitation.email,
-    firstName: invitation.firstName,
-    lastName: invitation.lastName,
     role: invitation.role,
     organization: invitation.organizationId,
     userExists: !!userExists,
