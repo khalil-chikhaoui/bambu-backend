@@ -26,6 +26,7 @@ import organizationRoutes from "./routes/organizations.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import hrRoutes from "./routes/hr.routes.js";
 import reservationRoutes from "./routes/reservations.routes.js";
+import teamsRoutes from "./routes/teams.routes.js";
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/reservations", reservationRoutes);
 
 app.use("/api/organizations/:orgId/hr", hrRoutes);
+app.use("/api/organizations/:orgId/teams", teamsRoutes);
 
 
 app.use("/api", generalRoutes); 
