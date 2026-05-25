@@ -69,7 +69,7 @@ export const createItem = asyncHandler(async (req, res) => {
  * @route   PUT /api/inventory/items/:id
  */
 export const updateItem = asyncHandler(async (req, res) => {
-  const { name, category, minThreshold, sku } = req.body;
+  const { name, category, minThreshold } = req.body;
   const item = await Item.findById(req.params.id);
 
   if (!item) {
@@ -79,25 +79,6 @@ export const updateItem = asyncHandler(async (req, res) => {
 
   const diff = { before: {}, after: {} };
   let hasChanges = false;
-
-  // 1. Handle SKU changes specifically
-  if (sku && sku.toUpperCase() !== item.sku) {
-    const newSku = sku.toUpperCase();
-    const skuExists = await Item.findOne({
-      organizationId: item.organizationId,
-      sku: newSku,
-    });
-
-    if (skuExists) {
-      res.status(400);
-      throw new Error("SKU_ALREADY_EXISTS");
-    }
-
-    diff.before.sku = item.sku;
-    diff.after.sku = newSku;
-    item.sku = newSku;
-    hasChanges = true;
-  }
 
   const fieldsToCheck = ["name", "category", "minThreshold"];
   fieldsToCheck.forEach((key) => {
