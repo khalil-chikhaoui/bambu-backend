@@ -145,29 +145,17 @@ describe('Inventory Items Controller Tests', () => {
         .send({ 
           name: 'Updated Name', 
           category: 'New Cat',
-          sku: 'NEW-SKU-1' // Controller will uppercase this
         });
 
       expect(response.status).toBe(200);
       expect(response.body.name).toBe('Updated Name');
-      expect(response.body.sku).toBe('NEW-SKU-1');
+      expect(response.body.sku).toBe('ORIG-1'); // SKU is immutable and remains original
 
       // Check the diff logging
       const movement = await StockMovement.findOne({ itemId: existingItem._id, type: 'UPDATED' });
       expect(movement.diff.before.name).toBe('Original Name');
       expect(movement.diff.after.name).toBe('Updated Name');
-      expect(movement.diff.after.sku).toBe('NEW-SKU-1');
-    });
-
-    it('should fail if the user attempts to change to an existing SKU', async () => {
-      await Item.create({ name: 'Other', sku: 'TAKEN-SKU', category: 'IT', organizationId: testOrgId });
-
-      const response = await request(app)
-        .put(`/api/inventory/items/${existingItem._id}`)
-        .send({ sku: 'taken-sku' }); // Should be case-insensitive check in controller
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('SKU_ALREADY_EXISTS');
+      expect(movement.diff.after.sku).toBeUndefined();
     });
 
     it('should NOT create a movement log if no data actually changed', async () => {
