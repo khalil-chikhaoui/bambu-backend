@@ -79,9 +79,3 @@ export const sendRealtimeMessage = (recipientIds, message) => {
     io.to(`user_${recipientId.toString()}`).emit("message_received", message);
   });
 };
-
-// Dispatch a real-time notification to a specific online user
-export const sendRealtimeNotification = (recipientId, notification) => {
-  if (!io) return;
-  io.to(`user_${recipientId.toString()}`).emit("notification_received", notification);
-};

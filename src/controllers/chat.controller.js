@@ -2,8 +2,7 @@
 import asyncHandler from "express-async-handler";
 import Conversation from "../models/chat/Conversation.js";
 import Message from "../models/chat/Message.js";
-import Notification from "../models/chat/Notification.js";
-import { sendRealtimeMessage, sendRealtimeNotification } from "../config/socket.js";
+import { sendRealtimeMessage } from "../config/socket.js";
 
 // @desc    Get all conversations for a user in the current organization
 // @route   GET /api/organizations/:orgId/chat
@@ -155,28 +154,6 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
   // Send real-time event via Socket
   sendRealtimeMessage(conversation.participants, populatedMessage);
-
-  // Send notification for other participants
-  const recipientIds = conversation.participants.filter(
-    (pId) => pId.toString() !== req.user._id.toString()
-  );
-
-  for (const recipientId of recipientIds) {
-    const notification = await Notification.create({
-      recipient: recipientId,
-      sender: req.user._id,
-      organizationId: orgId,
-      type: "NEW_MESSAGE",
-      title: "Nouveau message",
-      content: `${req.user.firstName} ${req.user.lastName} : "${content.substring(0, 45)}${content.length > 45 ? "..." : ""}"`,
-      link: `/organization/${orgId}/chat?convId=${convId}`,
-    });
-
-    const populatedNotification = await Notification.findById(notification._id)
-      .populate("sender", "firstName lastName email profileImage");
-
-    sendRealtimeNotification(recipientId, populatedNotification);
-  }
 
   res.status(201).json(populatedMessage);
 });

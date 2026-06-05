@@ -31,7 +31,6 @@ import hrRoutes from "./routes/hr.routes.js";
 import reservationRoutes from "./routes/reservations.routes.js";
 import teamsRoutes from "./routes/teams.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
-import notificationRoutes from "./routes/notifications.routes.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -76,7 +75,6 @@ app.use("/api/reservations", reservationRoutes);
 app.use("/api/organizations/:orgId/hr", hrRoutes);
 app.use("/api/organizations/:orgId/teams", teamsRoutes);
 app.use("/api/organizations/:orgId/chat", chatRoutes);
-app.use("/api/notifications", notificationRoutes);
 
 
 app.use("/api", generalRoutes); 

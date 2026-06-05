@@ -7,7 +7,6 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 // 1. Mock Socket helpers
 jest.unstable_mockModule("../../../src/config/socket.js", () => ({
   sendRealtimeMessage: jest.fn(),
-  sendRealtimeNotification: jest.fn(),
   getIO: jest.fn(),
 }));
 
@@ -19,7 +18,7 @@ const {
   markConversationAsRead,
 } = await import("../../../src/controllers/chat.controller.js");
 
-const { sendRealtimeMessage, sendRealtimeNotification } = await import(
+const { sendRealtimeMessage } = await import(
   "../../../src/config/socket.js"
 );
 
@@ -160,7 +159,6 @@ describe("Chat Controller Integration Tests", () => {
 
       // Check socket mocks
       expect(sendRealtimeMessage).toHaveBeenCalled();
-      expect(sendRealtimeNotification).toHaveBeenCalled();
     });
   });
 
