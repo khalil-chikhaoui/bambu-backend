@@ -1,41 +1,42 @@
 // src/controllers/organizations/branding.controller.js
 import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { v2 as cloudinary } from "cloudinary";
 import { logAudit } from "../../middlewares/audit.service.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-export const uploadOrganizationLogo = asyncHandler(async (req, res) => {
-  if (!req.file) {
+export const confirmOrganizationLogo = asyncHandler(async (req, res) => {
+  const { secureUrl, publicId } = req.body;
+
+  if (!secureUrl || !publicId) {
     res.status(400);
-    throw new Error("UPLOAD_NO_FILE");
+    throw new Error("UPLOAD_MISSING_DATA");
   }
 
   const organization = await Organization.findById(req.params.id);
 
   if (!organization) {
-    if (req.file.path) fs.unlinkSync(req.file.path);
     res.status(404);
     throw new Error("ORG_NOT_FOUND");
   }
 
-  if (organization.logo && organization.logo.includes("/api/images/")) {
+  // Delete previous logo from Cloudinary if different
+  if (organization.logoPublicId && organization.logoPublicId !== publicId) {
     try {
-      const oldFileName = organization.logo.split("/").pop();
-      const storagePath =
-        process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const oldPath = path.join(storagePath, "organizations", oldFileName);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      await cloudinary.uploader.destroy(organization.logoPublicId);
     } catch (err) {
-      console.log("Failed to delete old organization logo:", err.message);
+      console.log("Failed to delete old organization logo from Cloudinary:", err.message);
     }
   }
 
-  organization.logo = `${process.env.BACKEND_URL}/api/images/organizations/${req.file.filename}`;
+  organization.logo = secureUrl;
+  organization.logoPublicId = publicId;
   await organization.save();
 
   logAudit({
@@ -61,22 +62,16 @@ export const deleteOrganizationLogo = asyncHandler(async (req, res) => {
     throw new Error("ORG_NOT_FOUND");
   }
 
-  if (organization.logo && organization.logo.includes("/api/images/")) {
+  if (organization.logoPublicId) {
     try {
-      const fileName = organization.logo.split("/").pop();
-      const storagePath =
-        process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const filePath = path.join(storagePath, "organizations", fileName);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await cloudinary.uploader.destroy(organization.logoPublicId);
     } catch (error) {
-      console.log(
-        "Persistent Organization Logo Delete Error:",
-        error.message,
-      );
+      console.log("Cloudinary Organization Logo Delete Error:", error.message);
     }
   }
 
   organization.logo = "";
+  organization.logoPublicId = "";
   await organization.save();
 
   logAudit({

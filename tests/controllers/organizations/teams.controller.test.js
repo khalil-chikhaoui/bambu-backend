@@ -3,6 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { v2 as cloudinary } from 'cloudinary';
 
 // 1. Mock the audit service BEFORE importing the controller
 const logAuditMock = jest.fn().mockResolvedValue(true);
@@ -20,7 +21,7 @@ const {
   addMembersToTeam,
   removeMemberFromTeam,
   leaveTeam,
-  uploadTeamLogo,
+  confirmTeamLogo,
   deleteTeamLogo
 } = await import('../../../src/controllers/teams.controller.js');
 
@@ -45,12 +46,7 @@ app.post('/api/organizations/:orgId/teams/:teamId/members', addMembersToTeam);
 app.delete('/api/organizations/:orgId/teams/:teamId/members/:memberId', removeMemberFromTeam);
 app.post('/api/organizations/:orgId/teams/:teamId/leave', leaveTeam);
 
-// Mock multer middleware for testing upload
-app.post('/api/organizations/:orgId/teams/:teamId/upload-logo', (req, res, next) => {
-  req.file = { filename: 'test-logo.png', path: '/tmp/test-logo.png' };
-  next();
-}, uploadTeamLogo);
-
+app.post('/api/organizations/:orgId/teams/:teamId/logo/confirm', confirmTeamLogo);
 app.delete('/api/organizations/:orgId/teams/:teamId/logo', deleteTeamLogo);
 
 // Error handler
@@ -67,11 +63,19 @@ describe('Teams Controller Integration Tests', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
     orgId = new mongoose.Types.ObjectId().toString();
+    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
+    process.env.CLOUDINARY_API_KEY = 'test-key';
+    process.env.CLOUDINARY_API_SECRET = 'test-secret';
   });
 
   afterAll(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
+  });
+
+  beforeEach(async () => {
+    // Mock Cloudinary destroy function
+    jest.spyOn(cloudinary.uploader, 'destroy').mockResolvedValue({ result: 'ok' });
   });
 
   afterEach(async () => {
@@ -122,22 +126,33 @@ describe('Teams Controller Integration Tests', () => {
     expect(logAuditMock).toHaveBeenCalledWith(expect.objectContaining({ action: 'TEAM_MEMBER_ADDED' }));
   });
 
-  it('should upload a team logo', async () => {
+  it('should confirm a team logo and save Cloudinary path', async () => {
     const team = await Team.create({ name: 'Design', organizationId: orgId });
 
-    const res = await request(app).post(`/api/organizations/${orgId}/teams/${team._id}/upload-logo`);
+    const res = await request(app)
+      .post(`/api/organizations/${orgId}/teams/${team._id}/logo/confirm`)
+      .send({
+        secureUrl: 'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
+        publicId: 'logo-public-id'
+      });
     
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('LOGO_UPLOADED');
-    expect(res.body.logo).toContain('test-logo.png');
+    expect(res.body.logo).toBe('https://res.cloudinary.com/test-cloud/image/upload/logo.png');
 
     const updated = await Team.findById(team._id);
-    expect(updated.logo).toContain('test-logo.png');
+    expect(updated.logo).toBe('https://res.cloudinary.com/test-cloud/image/upload/logo.png');
+    expect(updated.logoPublicId).toBe('logo-public-id');
     expect(logAuditMock).toHaveBeenCalledWith(expect.objectContaining({ action: 'TEAM_LOGO_UPDATED' }));
   });
 
-  it('should delete a team logo', async () => {
-    const team = await Team.create({ name: 'Marketing', organizationId: orgId, logo: 'some-logo.png' });
+  it('should delete a team logo from Cloudinary and DB', async () => {
+    const team = await Team.create({ 
+      name: 'Marketing', 
+      organizationId: orgId, 
+      logo: 'https://res.cloudinary.com/test-cloud/image/upload/logo.png',
+      logoPublicId: 'logo-public-id'
+    });
 
     const res = await request(app).delete(`/api/organizations/${orgId}/teams/${team._id}/logo`);
     
@@ -147,6 +162,8 @@ describe('Teams Controller Integration Tests', () => {
 
     const updated = await Team.findById(team._id);
     expect(updated.logo).toBe('');
+    expect(updated.logoPublicId).toBe('');
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('logo-public-id');
     expect(logAuditMock).toHaveBeenCalledWith(expect.objectContaining({ action: 'TEAM_LOGO_DELETED' }));
   });
 });

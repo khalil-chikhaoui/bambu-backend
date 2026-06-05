@@ -3,12 +3,14 @@ import Team from "../models/Team.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 import { logAudit } from "../middlewares/audit.service.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { v2 as cloudinary } from "cloudinary";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // @desc    Create a new team
 // @route   POST /api/organizations/:orgId/teams
@@ -332,36 +334,36 @@ export const leaveTeam = asyncHandler(async (req, res) => {
   res.json({ message: "LEFT_TEAM" });
 });
 
-// @desc    Upload team logo
-// @route   POST /api/organizations/:orgId/teams/:teamId/upload-logo
+// @desc    Confirm team logo
+// @route   POST /api/organizations/:orgId/teams/:teamId/confirm-logo
 // @access  Private
-export const uploadTeamLogo = asyncHandler(async (req, res) => {
-  if (!req.file) {
+export const confirmTeamLogo = asyncHandler(async (req, res) => {
+  const { secureUrl, publicId } = req.body;
+
+  if (!secureUrl || !publicId) {
     res.status(400);
-    throw new Error("UPLOAD_NO_FILE");
+    throw new Error("UPLOAD_MISSING_DATA");
   }
 
   const { orgId, teamId } = req.params;
   const team = await Team.findOne({ _id: teamId, organizationId: orgId });
 
   if (!team) {
-    if (req.file.path) fs.unlinkSync(req.file.path);
     res.status(404);
     throw new Error("TEAM_NOT_FOUND");
   }
 
-  if (team.logo && team.logo.includes("/api/images/")) {
+  // Delete old team logo from Cloudinary if different
+  if (team.logoPublicId && team.logoPublicId !== publicId) {
     try {
-      const oldFileName = team.logo.split("/").pop();
-      const storagePath = process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const oldPath = path.join(storagePath, "teams", oldFileName);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      await cloudinary.uploader.destroy(team.logoPublicId);
     } catch (err) {
-      console.log("Failed to delete old team logo:", err.message);
+      console.log("Failed to delete old team logo from Cloudinary:", err.message);
     }
   }
 
-  team.logo = `${process.env.BACKEND_URL}/api/images/teams/${req.file.filename}`;
+  team.logo = secureUrl;
+  team.logoPublicId = publicId;
   await team.save();
 
   logAudit({
@@ -394,18 +396,16 @@ export const deleteTeamLogo = asyncHandler(async (req, res) => {
     throw new Error("TEAM_NOT_FOUND");
   }
 
-  if (team.logo && team.logo.includes("/api/images/")) {
+  if (team.logoPublicId) {
     try {
-      const fileName = team.logo.split("/").pop();
-      const storagePath = process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const filePath = path.join(storagePath, "teams", fileName);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await cloudinary.uploader.destroy(team.logoPublicId);
     } catch (error) {
-      console.log("Persistent Team Logo Delete Error:", error.message);
+      console.log("Cloudinary Team Logo Delete Error:", error.message);
     }
   }
 
   team.logo = "";
+  team.logoPublicId = "";
   await team.save();
 
   logAudit({

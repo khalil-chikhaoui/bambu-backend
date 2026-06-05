@@ -7,7 +7,7 @@ import {
   deleteOrganization,
 } from "../controllers/organizations/organization.controller.js";
 import {
-  uploadOrganizationLogo,
+  confirmOrganizationLogo,
   deleteOrganizationLogo,
 } from "../controllers/organizations/branding.controller.js";
 import {
@@ -21,7 +21,6 @@ import {
 import {
   getOrganizationHistory,
 } from "../controllers/organizations/history.controller.js";
-import { uploadOrganizationLogo as logoUploadMiddleware } from "../config/localUpload.js";
 
 const router = Router();
 
@@ -38,7 +37,7 @@ router.route("/:id")
   .delete(deleteOrganization);
 
 // --- Logo Management ---
-router.post("/:id/upload-logo", logoUploadMiddleware.single("file"), uploadOrganizationLogo);
+router.post("/:id/confirm-logo", confirmOrganizationLogo);
 router.delete("/:id/logo", deleteOrganizationLogo);
 
 // --- Team & Member Management ---

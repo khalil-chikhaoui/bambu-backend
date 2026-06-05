@@ -3,7 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
 
 // 1. Mock Audit Logger (Must happen BEFORE importing the controller)
 jest.unstable_mockModule('../../../src/middlewares/audit.service.js', () => ({
@@ -13,7 +13,7 @@ jest.unstable_mockModule('../../../src/middlewares/audit.service.js', () => ({
 // 2. Dynamic Imports (Must happen AFTER mocking)
 const { 
   getEmployeeDocuments, 
-  uploadDocument, 
+  confirmDocument, 
   deleteDocument 
 } = await import('../../../src/controllers/hr/documents.controller.js');
 const { logAudit } = await import('../../../src/middlewares/audit.service.js');
@@ -32,19 +32,6 @@ const fakeProtect = (req, res, next) => {
   next();
 };
 
-// 2. Fake Multer Middleware 
-const fakeUpload = (req, res, next) => {
-  if (req.headers['x-no-file']) {
-    return next();
-  }
-  
-  req.file = {
-    filename: 'test-hr-doc-123.pdf',
-    path: '/fake/temp/path/test-hr-doc-123.pdf'
-  };
-  next();
-};
-
 // ==========================================
 // EXPRESS APP SETUP
 // ==========================================
@@ -53,7 +40,7 @@ app.use(express.json());
 
 // Mount the routes with fake middlewares
 app.get('/api/organizations/:orgId/hr/employees/:employeeId/documents', fakeProtect, getEmployeeDocuments);
-app.post('/api/organizations/:orgId/hr/employees/:employeeId/documents', fakeProtect, fakeUpload, uploadDocument);
+app.post('/api/organizations/:orgId/hr/employees/:employeeId/documents/confirm', fakeProtect, confirmDocument);
 app.delete('/api/organizations/:orgId/hr/employees/:employeeId/documents/:documentId', fakeProtect, deleteDocument);
 
 // Global Error Handler 
@@ -75,6 +62,9 @@ describe('HR Documents Controller Integration Tests', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
     process.env.BACKEND_URL = 'http://localhost:5000';
+    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
+    process.env.CLOUDINARY_API_KEY = 'test-key';
+    process.env.CLOUDINARY_API_SECRET = 'test-secret';
   });
 
   // Teardown Database
@@ -98,9 +88,8 @@ describe('HR Documents Controller Integration Tests', () => {
     
     testUserId = user._id;
 
-    // Spy on fs to prevent actual file deletions during tests
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
+    // Mock Cloudinary destroy function
+    jest.spyOn(cloudinary.uploader, 'destroy').mockResolvedValue({ result: 'ok' });
   });
 
   // Cleanup after EACH test
@@ -122,7 +111,8 @@ describe('HR Documents Controller Integration Tests', () => {
           uploadedBy: testUserId,
           title: 'Old Contract',
           type: 'CONTRAT_SIGNE',
-          fileUrl: 'http://localhost:5000/api/images/hr/old.pdf',
+          fileUrl: 'https://res.cloudinary.com/test-cloud/raw/upload/old.pdf',
+          filePublicId: 'old-doc-id',
           createdAt: new Date('2023-01-01')
         },
         {
@@ -131,7 +121,8 @@ describe('HR Documents Controller Integration Tests', () => {
           uploadedBy: testUserId,
           title: 'New Contract',
           type: 'CONTRAT_SIGNE',
-          fileUrl: 'http://localhost:5000/api/images/hr/new.pdf',
+          fileUrl: 'https://res.cloudinary.com/test-cloud/raw/upload/new.pdf',
+          filePublicId: 'new-doc-id',
           createdAt: new Date('2024-01-01')
         }
       ]);
@@ -156,25 +147,28 @@ describe('HR Documents Controller Integration Tests', () => {
   });
 
   // ------------------------------------------
-  // POST /api/organizations/:orgId/hr/employees/:employeeId/documents
+  // POST /api/organizations/:orgId/hr/employees/:employeeId/documents/confirm
   // ------------------------------------------
-  describe('POST Upload Document', () => {
-    it('should upload a document successfully and trigger audit log', async () => {
+  describe('POST Confirm Document', () => {
+    it('should confirm a document successfully and trigger audit log', async () => {
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 5);
 
       const response = await request(app)
-        .post(`/api/organizations/${testOrganizationId}/hr/employees/${testEmployeeId}/documents`)
+        .post(`/api/organizations/${testOrganizationId}/hr/employees/${testEmployeeId}/documents/confirm`)
         .send({
           title: 'Identity Card',
           description: 'Valid until 2029',
           type: 'PIECE_IDENTITE',
-          expirationDate: futureDate.toISOString()
+          expirationDate: futureDate.toISOString(),
+          secureUrl: 'https://res.cloudinary.com/test-cloud/image/upload/id-card.jpg',
+          publicId: 'id-card-public-id'
         });
 
       expect(response.status).toBe(201);
       expect(response.body.title).toBe('Identity Card');
-      expect(response.body.fileUrl).toBe('http://localhost:5000/api/images/hr/test-hr-doc-123.pdf');
+      expect(response.body.fileUrl).toBe('https://res.cloudinary.com/test-cloud/image/upload/id-card.jpg');
+      expect(response.body.filePublicId).toBe('id-card-public-id');
 
       expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
         organizationId: testOrganizationId.toString(),
@@ -186,14 +180,13 @@ describe('HR Documents Controller Integration Tests', () => {
       }));
     });
 
-    it('should fail if no file is provided', async () => {
+    it('should fail if secureUrl is missing', async () => {
       const response = await request(app)
-        .post(`/api/organizations/${testOrganizationId}/hr/employees/${testEmployeeId}/documents`)
-        .set('x-no-file', 'true') 
-        .send({ title: 'Missing File Doc', type: 'RIB' });
+        .post(`/api/organizations/${testOrganizationId}/hr/employees/${testEmployeeId}/documents/confirm`)
+        .send({ title: 'Missing File Doc', type: 'RIB', publicId: 'some-id' });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toBe('UPLOAD_NO_FILE');
+      expect(response.body.message).toBe('UPLOAD_MISSING_DATA');
     });
   });
 
@@ -201,14 +194,15 @@ describe('HR Documents Controller Integration Tests', () => {
   // DELETE /api/organizations/:orgId/hr/employees/:employeeId/documents/:documentId
   // ------------------------------------------
   describe('DELETE HR Document', () => {
-    it('should delete a document, remove the physical file, and log the audit', async () => {
+    it('should delete a document, remove the Cloudinary file, and log the audit', async () => {
       const doc = await HRDocument.create({
         employeeRecordId: testEmployeeId,
         organizationId: testOrganizationId,
         uploadedBy: testUserId,
         title: 'Old Medical Certificate',
         type: 'VISITE_MEDICALE',
-        fileUrl: 'http://localhost:5000/api/images/hr/medical-2023.pdf'
+        fileUrl: 'https://res.cloudinary.com/test-cloud/raw/upload/medical-2023.pdf',
+        filePublicId: 'medical-2023-public-id'
       });
 
       const response = await request(app)
@@ -217,8 +211,7 @@ describe('HR Documents Controller Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('DOCUMENT_DELETED');
 
-      expect(fs.existsSync).toHaveBeenCalled();
-      expect(fs.unlinkSync).toHaveBeenCalled();
+      expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('medical-2023-public-id', { resource_type: 'raw' });
 
       const deletedDoc = await HRDocument.findById(doc._id);
       expect(deletedDoc).toBeNull();

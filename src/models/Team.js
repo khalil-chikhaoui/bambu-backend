@@ -16,6 +16,10 @@ const teamSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    logoPublicId: {
+      type: String,
+      default: "",
+    },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",

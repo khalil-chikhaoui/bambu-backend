@@ -9,10 +9,9 @@ import {
   addMembersToTeam,
   removeMemberFromTeam,
   leaveTeam,
-  uploadTeamLogo,
+  confirmTeamLogo,
   deleteTeamLogo,
 } from "../controllers/teams.controller.js";
-import { uploadTeamLogo as uploadTeamLogoMiddleware } from "../config/localUpload.js";
 
 // mergeParams: true allows access to the :orgId from the parent router
 const router = Router({ mergeParams: true });
@@ -29,7 +28,7 @@ router.route("/:teamId")
   .put(updateTeam)
   .delete(deleteTeam);
 
-router.post("/:teamId/upload-logo", uploadTeamLogoMiddleware.single("file"), uploadTeamLogo);
+router.post("/:teamId/confirm-logo", confirmTeamLogo);
 router.delete("/:teamId/logo", deleteTeamLogo);
 
 router.route("/:teamId/members")

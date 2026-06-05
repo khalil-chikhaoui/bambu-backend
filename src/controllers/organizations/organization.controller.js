@@ -3,7 +3,6 @@ import asyncHandler from "express-async-handler";
 import Organization from "../../models/Organization.js";
 import User from "../../models/User.js";
 import Invitation from "../../models/Invitation.js";
-import mongoose from "mongoose";
 import { logAudit } from "../../middlewares/audit.service.js";
 
 export const getOrganizationById = asyncHandler(async (req, res) => {
@@ -94,7 +93,7 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     if (addressChanged) {
       organization.address = { ...organization.address, ...req.body.address };
     }
-  } 
+  }
 
   // Diff Social Links (Optional, if you want to track them precisely)
   if (req.body.socialLinks) {
@@ -102,7 +101,6 @@ export const updateOrganization = asyncHandler(async (req, res) => {
       ...organization.socialLinks,
       ...req.body.socialLinks,
     };
-   
   }
 
   const updatedOrganization = await organization.save();
