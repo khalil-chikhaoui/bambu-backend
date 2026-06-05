@@ -46,7 +46,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     await transporter.sendMail({
       from: `"Bambu ERP" <${process.env.SMTP_EMAIL}>`,
       to: email,
-      subject: "Réinitialisation de votre mot de passe",
+      subject: "[Bambu System] Réinitialisation de votre mot de passe",
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
           <h2>Demande de réinitialisation</h2>
@@ -70,8 +70,7 @@ export const validateResetToken = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
   let decoded;
-  
-  
+
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
@@ -79,13 +78,12 @@ export const validateResetToken = asyncHandler(async (req, res) => {
     throw new Error("AUTH_TOKEN_INVALID");
   }
 
-  
   const user = await User.findById(decoded.id);
   if (!user) {
     res.status(404);
     throw new Error("AUTH_USER_NOT_FOUND");
   }
-  
+
   res.status(200).json({ message: "TOKEN_VALID" });
 });
 
