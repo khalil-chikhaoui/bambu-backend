@@ -9,7 +9,7 @@ const {
   markAllAsRead,
 } = await import("../../../src/controllers/notifications.controller.js");
 
-import Notification from "../../../src/models/Notification.js";
+import Notification from "../../../src/models/chat/Notification.js";
 import User from "../../../src/models/User.js";
 
 // ==========================================

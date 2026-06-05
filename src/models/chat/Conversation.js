@@ -1,4 +1,4 @@
-// src/models/Conversation.js
+// src/models/chat/Conversation.js
 import mongoose from "mongoose";
 
 const conversationSchema = new mongoose.Schema(

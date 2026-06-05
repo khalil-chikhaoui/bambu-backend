@@ -1,6 +1,6 @@
 // src/controllers/notifications.controller.js
 import asyncHandler from "express-async-handler";
-import Notification from "../models/Notification.js";
+import Notification from "../models/chat/Notification.js";
 
 // @desc    Get user's notifications (unread first, then sorted by newest, limit 20)
 // @route   GET /api/notifications

@@ -1,8 +1,8 @@
 // src/controllers/chat.controller.js
 import asyncHandler from "express-async-handler";
-import Conversation from "../models/Conversation.js";
-import Message from "../models/Message.js";
-import Notification from "../models/Notification.js";
+import Conversation from "../models/chat/Conversation.js";
+import Message from "../models/chat/Message.js";
+import Notification from "../models/chat/Notification.js";
 import { sendRealtimeMessage, sendRealtimeNotification } from "../config/socket.js";
 
 // @desc    Get all conversations for a user in the current organization

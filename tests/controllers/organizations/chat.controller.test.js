@@ -22,8 +22,8 @@ const { sendRealtimeMessage, sendRealtimeNotification } = await import(
   "../../../src/config/socket.js"
 );
 
-import Conversation from "../../../src/models/Conversation.js";
-import Message from "../../../src/models/Message.js";
+import Conversation from "../../../src/models/chat/Conversation.js";
+import Message from "../../../src/models/chat/Message.js";
 import User from "../../../src/models/User.js";
 
 // ==========================================

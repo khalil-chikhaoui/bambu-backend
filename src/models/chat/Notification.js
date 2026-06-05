@@ -1,4 +1,4 @@
-// src/models/Notification.js
+// src/models/chat/Notification.js
 import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
