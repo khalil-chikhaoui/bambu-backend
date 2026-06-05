@@ -6,6 +6,7 @@ import {
   getMessages,
   createConversation,
   sendMessage,
+  markConversationAsRead,
 } from "../controllers/chat.controller.js";
 
 const router = express.Router({ mergeParams: true });
@@ -20,5 +21,8 @@ router.route("/")
 router.route("/:convId/messages")
   .get(getMessages)
   .post(sendMessage);
+
+router.route("/:convId/read")
+  .patch(markConversationAsRead);
 
 export default router;

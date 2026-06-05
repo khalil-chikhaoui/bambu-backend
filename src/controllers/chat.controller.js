@@ -46,6 +46,18 @@ export const getMessages = asyncHandler(async (req, res) => {
     throw new Error("CONVERSATION_NOT_FOUND");
   }
 
+  // Mark all unread messages in this conversation as read by this user
+  await Message.updateMany(
+    {
+      conversationId: convId,
+      sender: { $ne: req.user._id },
+      "readBy.user": { $ne: req.user._id },
+    },
+    {
+      $push: { readBy: { user: req.user._id, readAt: new Date() } },
+    }
+  );
+
   const messages = await Message.find({ conversationId: convId })
     .populate("sender", "firstName lastName email profileImage")
     .sort({ createdAt: -1 })
@@ -167,4 +179,35 @@ export const sendMessage = asyncHandler(async (req, res) => {
   }
 
   res.status(201).json(populatedMessage);
+});
+
+// @desc    Mark all messages in a conversation as read
+// @route   PATCH /api/organizations/:orgId/chat/:convId/read
+// @access  Private
+export const markConversationAsRead = asyncHandler(async (req, res) => {
+  const { orgId, convId } = req.params;
+
+  const conversation = await Conversation.findOne({
+    _id: convId,
+    organizationId: orgId,
+    participants: req.user._id,
+  });
+
+  if (!conversation) {
+    res.status(404);
+    throw new Error("CONVERSATION_NOT_FOUND");
+  }
+
+  await Message.updateMany(
+    {
+      conversationId: convId,
+      sender: { $ne: req.user._id },
+      "readBy.user": { $ne: req.user._id },
+    },
+    {
+      $push: { readBy: { user: req.user._id, readAt: new Date() } },
+    }
+  );
+
+  res.status(200).json({ message: "CONVERSATION_MARKED_READ" });
 });

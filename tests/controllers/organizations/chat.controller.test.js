@@ -16,6 +16,7 @@ const {
   getMessages,
   createConversation,
   sendMessage,
+  markConversationAsRead,
 } = await import("../../../src/controllers/chat.controller.js");
 
 const { sendRealtimeMessage, sendRealtimeNotification } = await import(
@@ -43,6 +44,7 @@ app.get("/api/organizations/:orgId/chat", fakeProtect, getConversations);
 app.post("/api/organizations/:orgId/chat", fakeProtect, createConversation);
 app.get("/api/organizations/:orgId/chat/:convId/messages", fakeProtect, getMessages);
 app.post("/api/organizations/:orgId/chat/:convId/messages", fakeProtect, sendMessage);
+app.patch("/api/organizations/:orgId/chat/:convId/read", fakeProtect, markConversationAsRead);
 
 app.use((err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
@@ -183,6 +185,33 @@ describe("Chat Controller Integration Tests", () => {
       expect(response.body).toHaveLength(2);
       expect(response.body[0].content).toBe("First message");
       expect(response.body[1].content).toBe("Second message");
+    });
+  });
+
+  describe("PATCH /api/organizations/:orgId/chat/:convId/read", () => {
+    it("should mark all unread messages as read", async () => {
+      const conv = await Conversation.create({
+        organizationId: orgId,
+        participants: [testUserId, recipientUser._id],
+        isGroup: false,
+      });
+
+      const unreadMessage = await Message.create({
+        conversationId: conv._id,
+        sender: recipientUser._id,
+        content: "Hey, check this out!",
+      });
+
+      const response = await request(app).patch(
+        `/api/organizations/${orgId}/chat/${conv._id}/read`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("CONVERSATION_MARKED_READ");
+
+      const dbMessage = await Message.findById(unreadMessage._id);
+      expect(dbMessage.readBy).toHaveLength(1);
+      expect(dbMessage.readBy[0].user.toString()).toBe(testUserId.toString());
     });
   });
 });
