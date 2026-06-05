@@ -9,10 +9,9 @@ import {
 import {
   getProfile,
   updateProfile,
-  uploadUserAvatar,
+  confirmUserAvatar,
   deleteUserAvatar,
 } from "../controllers/users/profile.controller.js";
-import { uploadUserAvatar as avatarUploadMiddleware } from "../config/localUpload.js";
 
 const router = Router();
 
@@ -37,7 +36,7 @@ router.route("/profile")
   .get(getProfile)
   .put(updateProfile);
 
-router.post("/avatar", avatarUploadMiddleware.single("file"), uploadUserAvatar);
+router.post("/avatar/confirm", confirmUserAvatar);
 router.delete("/avatar", deleteUserAvatar);
 
 export default router;

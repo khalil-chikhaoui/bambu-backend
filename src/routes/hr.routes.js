@@ -1,7 +1,6 @@
 // src/routes/hr.routes.js
 import { Router } from "express";
 import { protect } from "../middlewares/auth.js";
-import { uploadHRDocument } from "../config/localUpload.js";
 
 // Import Controllers
 import {
@@ -14,7 +13,7 @@ import {
 
 import {
   getEmployeeDocuments,
-  uploadDocument,
+  confirmDocument,
   deleteDocument,
 } from "../controllers/hr/documents.controller.js";
 
@@ -38,11 +37,8 @@ employeeRouter.route("/").get(getEmployeeById).put(updateEmployee);
 employeeRouter.put("/assurances", updateAssurances);
 
 // -- Documents --
-employeeRouter
-  .route("/documents")
-  .get(getEmployeeDocuments)
-  .post(uploadHRDocument.single("file"), uploadDocument);
-
+employeeRouter.route("/documents").get(getEmployeeDocuments);
+employeeRouter.post("/documents/confirm", confirmDocument);
 employeeRouter.delete("/documents/:documentId", deleteDocument);
 
 // Mount the employee router

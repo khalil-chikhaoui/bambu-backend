@@ -24,6 +24,10 @@ const organizationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    logoPublicId: {
+      type: String,
+      default: "",
+    },
 
     // --- System Limits ---
     maxMembers: {

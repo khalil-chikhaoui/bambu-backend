@@ -54,6 +54,10 @@ const hrDocumentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    filePublicId: {
+      type: String,
+      default: "",
+    },
     
   },
   { timestamps: true }

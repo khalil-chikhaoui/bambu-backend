@@ -3,12 +3,12 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
 
 import { 
   getProfile, 
   updateProfile, 
-  uploadUserAvatar, 
+  confirmUserAvatar, 
   deleteUserAvatar 
 } from '../../../src/controllers/users/profile.controller.js';
 import User from '../../../src/models/User.js';
@@ -19,18 +19,9 @@ import Organization from '../../../src/models/Organization.js';
 // ==========================================
 let testUserId; // We will update this before every test
 
-// 1. Fake Auth Middleware (Pretends we passed the JWT protect check)
+// Fake Auth Middleware (Pretends we passed the JWT protect check)
 const fakeProtect = (req, res, next) => {
   req.user = { _id: testUserId };
-  next();
-};
-
-// 2. Fake Multer Middleware (Pretends a file was uploaded)
-const fakeUpload = (req, res, next) => {
-  req.file = {
-    filename: 'test-avatar-123.jpg',
-    path: '/fake/temp/path/test-avatar-123.jpg'
-  };
   next();
 };
 
@@ -43,8 +34,7 @@ app.use(express.json());
 // Mount the routes with our fake middlewares
 app.get('/api/profile', fakeProtect, getProfile);
 app.put('/api/profile', fakeProtect, updateProfile);
-// We inject the fakeUpload middleware only for the upload route
-app.post('/api/profile/avatar', fakeProtect, fakeUpload, uploadUserAvatar);
+app.post('/api/profile/avatar/confirm', fakeProtect, confirmUserAvatar);
 app.delete('/api/profile/avatar', fakeProtect, deleteUserAvatar);
 
 app.use((err, req, res, next) => {
@@ -64,6 +54,9 @@ describe('Profile Controller Integration Tests', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
     process.env.BACKEND_URL = 'http://localhost:5000';
+    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
+    process.env.CLOUDINARY_API_KEY = 'test-key';
+    process.env.CLOUDINARY_API_SECRET = 'test-secret';
   });
 
   // Teardown Database
@@ -97,9 +90,8 @@ describe('Profile Controller Integration Tests', () => {
     // Set the global ID so our fakeProtect middleware knows who is logged in
     testUserId = user._id;
 
-    // Spy on fs to prevent actual file deletion during tests
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {}); // Does nothing!
+    // Mock Cloudinary destroy function
+    jest.spyOn(cloudinary.uploader, 'destroy').mockResolvedValue({ result: 'ok' });
   });
 
   // Cleanup after EACH test
@@ -159,31 +151,43 @@ describe('Profile Controller Integration Tests', () => {
   // AVATAR UPLOAD & DELETE
   // ------------------------------------------
   describe('Avatar Management', () => {
-    it('should upload an avatar and return the new image URL', async () => {
-      const response = await request(app).post('/api/profile/avatar');
+    it('should confirm a Cloudinary avatar and return the user details', async () => {
+      const response = await request(app)
+        .post('/api/profile/avatar/confirm')
+        .send({
+          secureUrl: 'https://res.cloudinary.com/test/image/upload/avatar.jpg',
+          publicId: 'test-public-id'
+        });
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('AVATAR_UPLOADED');
-      expect(response.body.user.profileImage).toBe('http://localhost:5000/api/images/users/test-avatar-123.jpg');
+      expect(response.body.message).toBe('AVATAR_CONFIRMED');
+      expect(response.body.user.profileImage).toBe('https://res.cloudinary.com/test/image/upload/avatar.jpg');
+      expect(response.body.user.profileImagePublicId).toBe('test-public-id');
     });
 
-    it('should delete the old avatar if uploading a new one', async () => {
-      // 1. Manually give the user an existing old avatar
+    it('should delete the old avatar from Cloudinary if confirming a new one', async () => {
+      // 1. Manually give the user an existing old avatar with a public ID
       await User.findByIdAndUpdate(testUserId, { 
-        profileImage: 'http://localhost:5000/api/images/users/old-avatar.jpg' 
+        profileImage: 'https://res.cloudinary.com/test/image/upload/old.jpg',
+        profileImagePublicId: 'old-public-id'
       });
 
-      // 2. Upload a new one
-      await request(app).post('/api/profile/avatar');
+      // 2. Confirm a new one
+      await request(app)
+        .post('/api/profile/avatar/confirm')
+        .send({
+          secureUrl: 'https://res.cloudinary.com/test/image/upload/new.jpg',
+          publicId: 'new-public-id'
+        });
 
-      // 3. Verify that our system tried to delete the old file
-      expect(fs.existsSync).toHaveBeenCalled();
-      expect(fs.unlinkSync).toHaveBeenCalled();
+      // 3. Verify that cloudinary.uploader.destroy was called with the old public ID
+      expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('old-public-id');
     });
 
-    it('should delete the avatar and clear the profileImage field', async () => {
+    it('should delete the avatar from Cloudinary and clear the database fields', async () => {
       await User.findByIdAndUpdate(testUserId, { 
-        profileImage: 'http://localhost:5000/api/images/users/to-delete.jpg' 
+        profileImage: 'https://res.cloudinary.com/test/image/upload/to-delete.jpg',
+        profileImagePublicId: 'to-delete-public-id'
       });
 
       const response = await request(app).delete('/api/profile/avatar');
@@ -191,7 +195,8 @@ describe('Profile Controller Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('AVATAR_DELETED');
       expect(response.body.user.profileImage).toBe('');
-      expect(fs.unlinkSync).toHaveBeenCalled();
+      expect(response.body.user.profileImagePublicId).toBe('');
+      expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('to-delete-public-id');
     });
   });
 });

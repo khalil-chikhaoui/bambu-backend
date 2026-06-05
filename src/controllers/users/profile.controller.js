@@ -1,12 +1,14 @@
 // src/controllers/users/profile.controller.js
 import asyncHandler from "express-async-handler";
 import User from "../../models/User.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { v2 as cloudinary } from "cloudinary";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -57,33 +59,32 @@ export const getProfile = asyncHandler(async (req, res) => {
   }
 });
 
-export const uploadUserAvatar = asyncHandler(async (req, res) => {
-  if (!req.file) {
+export const confirmUserAvatar = asyncHandler(async (req, res) => {
+  const { secureUrl, publicId } = req.body;
+
+  if (!secureUrl || !publicId) {
     res.status(400);
-    throw new Error("UPLOAD_NO_FILE");
+    throw new Error("UPLOAD_MISSING_DATA");
   }
 
   const user = await User.findById(req.user._id);
 
   if (!user) {
-    if (req.file.path) fs.unlinkSync(req.file.path);
     res.status(404);
     throw new Error("AUTH_USER_NOT_FOUND");
   }
 
-  if (user.profileImage && user.profileImage.includes("/api/images/")) {
+  // Delete previous Cloudinary image if it exists and is different
+  if (user.profileImagePublicId && user.profileImagePublicId !== publicId) {
     try {
-      const oldFileName = user.profileImage.split("/").pop();
-      const storagePath =
-        process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const oldPath = path.join(storagePath, "users", oldFileName);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      await cloudinary.uploader.destroy(user.profileImagePublicId);
     } catch (err) {
-      console.log("Failed to delete old user avatar:", err.message);
+      console.log("Failed to delete old Cloudinary avatar:", err.message);
     }
   }
 
-  user.profileImage = `${process.env.BACKEND_URL}/api/images/users/${req.file.filename}`;
+  user.profileImage = secureUrl;
+  user.profileImagePublicId = publicId;
   await user.save();
   await user.populate("memberships.organizationId");
 
@@ -91,7 +92,7 @@ export const uploadUserAvatar = asyncHandler(async (req, res) => {
   delete userResponse.password;
 
   res.status(200).json({
-    message: "AVATAR_UPLOADED",
+    message: "AVATAR_CONFIRMED",
     user: userResponse,
   });
 });
@@ -104,22 +105,16 @@ export const deleteUserAvatar = asyncHandler(async (req, res) => {
     throw new Error("AUTH_USER_NOT_FOUND");
   }
 
-  if (user.profileImage && user.profileImage.includes("/api/images/")) {
+  if (user.profileImagePublicId) {
     try {
-      const filename = user.profileImage.split("/").pop();
-      const storagePath =
-        process.env.UPLOAD_PATH || path.join(__dirname, "../../../images");
-      const filePath = path.join(storagePath, "users", filename);
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      await cloudinary.uploader.destroy(user.profileImagePublicId);
     } catch (error) {
-      console.log("Persistent File Delete Error:", error.message);
+      console.log("Cloudinary File Delete Error:", error.message);
     }
   }
 
   user.profileImage = "";
+  user.profileImagePublicId = "";
   await user.save();
   await user.populate("memberships.organizationId");
 

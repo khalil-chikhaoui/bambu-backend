@@ -2,8 +2,14 @@
 import asyncHandler from "express-async-handler";
 import HRDocument from "../../models/hr/HRDocument.js";
 import { logAudit } from "../../middlewares/audit.service.js";
-import fs from "fs";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // @desc    Get documents for an employee
 // @route   GET /api/organizations/:orgId/hr/employees/:employeeId/documents
@@ -17,19 +23,17 @@ export const getEmployeeDocuments = asyncHandler(async (req, res) => {
   res.status(200).json(documents);
 });
 
-// @desc    Upload an HR Document
-// @route   POST /api/organizations/:orgId/hr/employees/:employeeId/documents
+// @desc    Confirm an HR Document upload
+// @route   POST /api/organizations/:orgId/hr/employees/:employeeId/documents/confirm
 // @access  Private
-export const uploadDocument = asyncHandler(async (req, res) => {
+export const confirmDocument = asyncHandler(async (req, res) => {
   const { orgId, employeeId } = req.params;
-  const { title, description, type, expirationDate } = req.body;
+  const { title, description, type, expirationDate, secureUrl, publicId } = req.body;
 
-  if (!req.file) {
+  if (!secureUrl || !publicId) {
     res.status(400);
-    throw new Error("UPLOAD_NO_FILE");
+    throw new Error("UPLOAD_MISSING_DATA");
   }
-
-  const fileUrl = `${process.env.BACKEND_URL}/api/images/hr/${req.file.filename}`;
 
   const newDoc = await HRDocument.create({
     employeeRecordId: employeeId,
@@ -38,8 +42,9 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     title,
     description,
     type,
-    expirationDate,
-    fileUrl,
+    expirationDate: expirationDate || undefined,
+    fileUrl: secureUrl,
+    filePublicId: publicId,
   });
 
   logAudit({
@@ -71,17 +76,16 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     throw new Error("DOCUMENT_NOT_FOUND");
   }
 
-  // Delete physical file
-  try {
-    const filename = document.fileUrl.split("/").pop();
-    const storagePath = process.env.UPLOAD_PATH || path.join(process.cwd(), "images");
-    const filePath = path.join(storagePath, "hr", filename);
-
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+  // Delete from Cloudinary
+  if (document.filePublicId) {
+    try {
+      const isImage = /\.(jpg|jpeg|png|webp)$/i.test(document.fileUrl);
+      const resourceType = isImage ? 'image' : 'raw';
+      
+      await cloudinary.uploader.destroy(document.filePublicId, { resource_type: resourceType });
+    } catch (error) {
+      console.error("Failed to delete Cloudinary HR file:", error.message);
     }
-  } catch (error) {
-    console.error("Failed to delete HR physical file:", error.message);
   }
 
   await document.deleteOne();
