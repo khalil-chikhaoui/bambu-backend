@@ -6,6 +6,9 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import path from "path";
+import http from "http";
+import { initSocket } from "./config/socket.js";
+
 const envFile =
   process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
@@ -27,8 +30,11 @@ import inventoryRoutes from "./routes/inventory.routes.js";
 import hrRoutes from "./routes/hr.routes.js";
 import reservationRoutes from "./routes/reservations.routes.js";
 import teamsRoutes from "./routes/teams.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 
 const app = express();
+const server = http.createServer(app);
+initSocket(server);
 
 // --- Middlewares ---
 // CRITICAL: Once your frontend is live, change origin: "*"
@@ -68,6 +74,7 @@ app.use("/api/reservations", reservationRoutes);
 
 app.use("/api/organizations/:orgId/hr", hrRoutes);
 app.use("/api/organizations/:orgId/teams", teamsRoutes);
+app.use("/api/organizations/:orgId/chat", chatRoutes);
 
 
 app.use("/api", generalRoutes); 
@@ -89,7 +96,7 @@ const startApp = async () => {
       throw new Error("MONGODB_URI is not defined in your .env file");
     }
     await connectDB(process.env.MONGODB_URI);
-    app.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on Port ${PORT}`);
     });
   } catch (err) {
