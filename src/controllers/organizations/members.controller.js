@@ -85,7 +85,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
     await transporter.sendMail({
       from: `"Bambu ERP" <${process.env.SMTP_EMAIL}>`,
       to: email,
-      subject: `Invitation à rejoindre ${organization.name}`,
+      subject: `[Bambu System] Invitation à rejoindre ${organization.name}`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 12px;">
           <h2 style="color: #184c16;">${greeting}</h2>

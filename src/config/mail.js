@@ -74,8 +74,8 @@ export const getContactTemplates = (data) => {
     // --- USER TEMPLATE ---
     user: {
       subject: isFr
-        ? "Bambu - Nous avons bien reçu votre message"
-        : "Bambu - We have received your message",
+        ? "[Bambu System] Nous avons bien reçu votre message"
+        : "[Bambu System] We have received your message",
       html: emailWrapper(
         `
         <p style="margin-top: 0; font-size: 18px; font-weight: 700; color: #184C16;">
@@ -106,7 +106,7 @@ export const getContactTemplates = (data) => {
 
     // --- ADMIN TEMPLATE ---
     admin: {
-      subject: `[New Lead] ${subject} - ${firstName} ${lastName}`,
+      subject: `[Bambu System] [New Lead] ${subject} - ${firstName} ${lastName}`,
       html: emailWrapper(
         `
         <div style="margin-bottom: 30px;">
