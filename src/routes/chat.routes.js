@@ -7,6 +7,7 @@ import {
   createConversation,
   sendMessage,
   markConversationAsRead,
+  clearConversation,
 } from "../controllers/chat.controller.js";
 
 const router = express.Router({ mergeParams: true });
@@ -24,5 +25,8 @@ router.route("/:convId/messages")
 
 router.route("/:convId/read")
   .patch(markConversationAsRead);
+
+router.route("/:convId/clear")
+  .delete(clearConversation);
 
 export default router;

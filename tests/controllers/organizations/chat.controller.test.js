@@ -16,6 +16,7 @@ const {
   createConversation,
   sendMessage,
   markConversationAsRead,
+  clearConversation,
 } = await import("../../../src/controllers/chat.controller.js");
 
 const { sendRealtimeMessage } = await import(
@@ -44,6 +45,7 @@ app.post("/api/organizations/:orgId/chat", fakeProtect, createConversation);
 app.get("/api/organizations/:orgId/chat/:convId/messages", fakeProtect, getMessages);
 app.post("/api/organizations/:orgId/chat/:convId/messages", fakeProtect, sendMessage);
 app.patch("/api/organizations/:orgId/chat/:convId/read", fakeProtect, markConversationAsRead);
+app.delete("/api/organizations/:orgId/chat/:convId/clear", fakeProtect, clearConversation);
 
 app.use((err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
@@ -210,6 +212,79 @@ describe("Chat Controller Integration Tests", () => {
       const dbMessage = await Message.findById(unreadMessage._id);
       expect(dbMessage.readBy).toHaveLength(1);
       expect(dbMessage.readBy[0].user.toString()).toBe(testUserId.toString());
+    });
+  });
+
+  describe("DELETE /api/organizations/:orgId/chat/:convId/clear", () => {
+    it("should clear the conversation only for the current user", async () => {
+      const conv = await Conversation.create({
+        organizationId: orgId,
+        participants: [testUserId, recipientUser._id],
+        isGroup: false,
+      });
+
+      const msg1 = await Message.create({
+        conversationId: conv._id,
+        sender: testUserId,
+        content: "Message 1",
+      });
+
+      const msg2 = await Message.create({
+        conversationId: conv._id,
+        sender: recipientUser._id,
+        content: "Message 2",
+      });
+
+      // Update conv lastMessage
+      conv.lastMessage = msg2._id;
+      await conv.save();
+
+      // Clear the conversation
+      const response = await request(app).delete(
+        `/api/organizations/${orgId}/chat/${conv._id}/clear`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("CONVERSATION_CLEARED");
+
+      // Verify messages now have testUserId in deletedFor
+      const dbMsg1 = await Message.findById(msg1._id);
+      const dbMsg2 = await Message.findById(msg2._id);
+      expect(dbMsg1.deletedFor).toContainEqual(testUserId);
+      expect(dbMsg2.deletedFor).toContainEqual(testUserId);
+
+      // Verify getMessages returns empty array for current user
+      const msgsResponse = await request(app).get(
+        `/api/organizations/${orgId}/chat/${conv._id}/messages`
+      );
+      expect(msgsResponse.status).toBe(200);
+      expect(msgsResponse.body).toHaveLength(0);
+
+      // Verify getConversations returns conversation with undefined lastMessage for current user
+      const convsResponse = await request(app).get(
+        `/api/organizations/${orgId}/chat`
+      );
+      expect(convsResponse.status).toBe(200);
+      expect(convsResponse.body[0].lastMessage).toBeUndefined();
+
+      // Verify messages are still visible for the other participant (by swapping testUserId)
+      const prevTestUserId = testUserId;
+      testUserId = recipientUser._id;
+
+      const recipientMsgsResponse = await request(app).get(
+        `/api/organizations/${orgId}/chat/${conv._id}/messages`
+      );
+      expect(recipientMsgsResponse.status).toBe(200);
+      expect(recipientMsgsResponse.body).toHaveLength(2);
+
+      const recipientConvsResponse = await request(app).get(
+        `/api/organizations/${orgId}/chat`
+      );
+      expect(recipientConvsResponse.status).toBe(200);
+      expect(recipientConvsResponse.body[0].lastMessage).toBeDefined();
+
+      // Restore testUserId
+      testUserId = prevTestUserId;
     });
   });
 });

@@ -21,7 +21,22 @@ export const getConversations = asyncHandler(async (req, res) => {
     })
     .sort({ updatedAt: -1 });
 
-  res.status(200).json(conversations);
+  // Map to plain objects and hide lastMessage if deleted for current user
+  const formattedConversations = conversations.map((conv) => {
+    const convObj = conv.toObject();
+    if (convObj.lastMessage && convObj.lastMessage.deletedFor) {
+      const isDeletedForMe = Array.isArray(convObj.lastMessage.deletedFor) &&
+        convObj.lastMessage.deletedFor.some(
+          (userId) => userId.toString() === req.user._id.toString(),
+        );
+      if (isDeletedForMe) {
+        delete convObj.lastMessage;
+      }
+    }
+    return convObj;
+  });
+
+  res.status(200).json(formattedConversations);
 });
 
 // @desc    Get messages in a conversation (paginated, chronological order)
@@ -57,7 +72,10 @@ export const getMessages = asyncHandler(async (req, res) => {
     }
   );
 
-  const messages = await Message.find({ conversationId: convId })
+  const messages = await Message.find({
+    conversationId: convId,
+    deletedFor: { $ne: req.user._id },
+  })
     .populate("sender", "firstName lastName email profileImage")
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -187,4 +205,30 @@ export const markConversationAsRead = asyncHandler(async (req, res) => {
   );
 
   res.status(200).json({ message: "CONVERSATION_MARKED_READ" });
+});
+
+// @desc    Clear all messages in a conversation for the current user
+// @route   DELETE /api/organizations/:orgId/chat/:convId/clear
+// @access  Private
+export const clearConversation = asyncHandler(async (req, res) => {
+  const { orgId, convId } = req.params;
+
+  const conversation = await Conversation.findOne({
+    _id: convId,
+    organizationId: orgId,
+    participants: req.user._id,
+  });
+
+  if (!conversation) {
+    res.status(404);
+    throw new Error("CONVERSATION_NOT_FOUND");
+  }
+
+  // Push user ID to deletedFor array of all messages in the conversation
+  await Message.updateMany(
+    { conversationId: convId },
+    { $addToSet: { deletedFor: req.user._id } }
+  );
+
+  res.status(200).json({ message: "CONVERSATION_CLEARED" });
 });
