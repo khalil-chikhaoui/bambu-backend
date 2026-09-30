@@ -11,6 +11,8 @@
     "start:prod": "cross-env NODE_ENV=production nodemon src/index.js",
     "seed:local": "cross-env NODE_ENV=development node seed.js",
     "seed:prod": "cross-env NODE_ENV=production node seed.js",
+    "seed:resources:local": "cross-env NODE_ENV=development node seed-resources.js",
+    "seed:resources:prod": "cross-env NODE_ENV=production node seed-resources.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles"
   },
   "dependencies": {
